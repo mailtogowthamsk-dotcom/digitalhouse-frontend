@@ -1,0 +1,197 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.app {
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.app-header {
+  margin-bottom: 1.5rem;
+}
+
+.app-header h1 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0 0 1rem 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-refresh {
+  background: #0f172a;
+  color: #fff;
+}
+
+.btn-approve {
+  background: #22c55e;
+  color: #fff;
+}
+
+.btn-reject {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn-reject-confirm {
+  background: #b91c1c;
+  color: #fff;
+}
+
+.btn-cancel {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.error-banner {
+  padding: 1rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.loading,
+.empty {
+  color: #64748b;
+  padding: 2rem;
+}
+
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pending-card {
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.pending-card-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pending-card-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.user-email {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.section-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.submitted {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.data-compare {
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+}
+
+.data-compare table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.data-compare th,
+.data-compare td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.data-compare th {
+  font-weight: 600;
+  color: #475569;
+}
+
+.field-name {
+  font-family: ui-monospace, monospace;
+  color: #64748b;
+}
+
+.data-compare tr.changed .pending {
+  background: #fef9c3;
+}
+
+.data-empty {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.pending-card-actions {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.reject-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.reject-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  min-width: 200px;
+}
+
+.reject-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
