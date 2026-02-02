@@ -8,7 +8,7 @@ export type AdminLoginResponse = { token: string; admin: { email: string } };
 
 export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
   const base = (import.meta as any).env?.VITE_API_BASE ?? "";
-  const res = await fetch(`${base}api/admin/login`, {
+  const res = await fetch(`${base}/api/admin/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
