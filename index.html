@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Digital House – Admin</title>
+    <script>
+      (function () {
+        var f = window.fetch.bind(window);
+        window.fetch = function (input, init) {
+          var url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
+          if (/^https?:\/\/infosensetechnologies\.com\//i.test(url)) {
+            url = url.replace(/^https?:\/\/infosensetechnologies\.com/i, "https://www.infosensetechnologies.com");
+          }
+          if (/infosensetechnologies\.com\/digitalhouse\/backend/i.test(url)) {
+            url = url.replace(/^https?:\/\/(?:www\.)?infosensetechnologies\.com/i, "");
+            if (!url.startsWith("/")) url = "/" + url;
+          }
+          if (typeof input === "string") return f(url, init);
+          if (input instanceof Request) return f(new Request(url, input), init);
+          return f(url, init);
+        };
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

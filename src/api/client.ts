@@ -2,10 +2,10 @@
  * Admin API base URL and auth token.
  */
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE ?? "";
+import { apiUrl } from "./apiBase";
 
 export function getApiBase(): string {
-  return API_BASE;
+  return "/digitalhouse/backend";
 }
 
 export function getToken(): string | null {
@@ -27,13 +27,11 @@ export function authHeaders(): HeadersInit {
   return h;
 }
 
-export async function fetchApi<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${API_BASE}${path}`;
+export async function fetchApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const url = apiUrl(path);
   const res = await fetch(url, {
     ...options,
+    credentials: "same-origin",
     headers: { ...authHeaders(), ...(options.headers as Record<string, string>) }
   });
   if (!res.ok) {

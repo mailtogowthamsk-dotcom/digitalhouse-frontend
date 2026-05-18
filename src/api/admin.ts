@@ -4,12 +4,15 @@
 
 import { fetchApi, setToken } from "./client";
 
+/** Relative only — never https://infosensetechnologies.com/... (CORS with www admin site). */
+const ADMIN_LOGIN_URL = "/digitalhouse/backend/api/admin/login";
+
 export type AdminLoginResponse = { token: string; admin: { email: string } };
 
 export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
-  const base = (import.meta as any).env?.VITE_API_BASE ?? "";
-  const res = await fetch(`${base}/api/admin/login`, {
+  const res = await fetch(ADMIN_LOGIN_URL, {
     method: "POST",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
   });

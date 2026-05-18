@@ -1,0 +1,14 @@
+# SPA + canonical host for admin (avoid www vs non-www CORS)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /digitalhouse/admin/
+
+  # Bare domain → www (admin and API must share the same host)
+  RewriteCond %{HTTP_HOST} ^infosensetechnologies\.com$ [NC]
+  RewriteRule ^ https://www.infosensetechnologies.com%{REQUEST_URI} [R=301,L]
+
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /digitalhouse/admin/index.html [L]
+</IfModule>
