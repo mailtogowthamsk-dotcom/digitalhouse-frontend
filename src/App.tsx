@@ -10,7 +10,8 @@ import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
-import { MatrimonyApprovalPage } from "./pages/MatrimonyApprovalPage";
+import { MatrimonyRequestsListPage } from "./features/matrimony-admin/pages/MatrimonyRequestsListPage";
+import { MatrimonyRequestDetailPage } from "./features/matrimony-admin/pages/MatrimonyRequestDetailPage";
 import { BusinessApprovalPage } from "./pages/BusinessApprovalPage";
 import { PostsModerationPage } from "./pages/PostsModerationPage";
 import { JobPortalPage } from "./pages/JobPortalPage";
@@ -31,7 +32,7 @@ const queryClient = new QueryClient({
 const titles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/users": "User Management",
-  "/matrimony": "Matrimony Approval",
+  "/matrimony": "Matrimony Requests",
   "/business": "Business Approval",
   "/posts": "Posts Moderation",
   "/job-portal": "Job Portal",
@@ -46,7 +47,9 @@ const titles: Record<string, string> = {
 function LayoutWithTitle() {
   const location = useLocation();
   const path = location.pathname;
-  const title = titles[path] ?? "Admin";
+  const title =
+    titles[path] ??
+    (path.startsWith("/matrimony/") ? "Matrimony Review" : "Admin");
   useEffect(() => {
     (window as any).__PAGE_TITLE__ = title;
   }, [title]);
@@ -72,7 +75,8 @@ export default function App() {
             >
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="users" element={<UserManagementPage />} />
-              <Route path="matrimony" element={<MatrimonyApprovalPage />} />
+              <Route path="matrimony" element={<MatrimonyRequestsListPage />} />
+              <Route path="matrimony/:id" element={<MatrimonyRequestDetailPage />} />
               <Route path="business" element={<BusinessApprovalPage />} />
               <Route path="posts" element={<PostsModerationPage />} />
               <Route path="job-portal" element={<JobPortalPage />} />

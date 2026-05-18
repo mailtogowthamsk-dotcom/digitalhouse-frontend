@@ -94,6 +94,7 @@ export type PendingProfileUpdate = {
   reviewedAt: string | null;
   adminRemarks: string | null;
   currentApproved: Record<string, unknown> | null;
+  submittedForReview?: boolean;
 };
 
 export async function getPendingUpdates(): Promise<PendingProfileUpdate[]> {

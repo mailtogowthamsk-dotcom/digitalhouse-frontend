@@ -5,7 +5,7 @@ import { getDashboardStats } from "../api/admin";
 const cards = [
   { key: "totalUsers", label: "Total Users", link: "/users", color: "bg-slate-50 border-slate-200 text-slate-800" },
   { key: "pendingUserApprovals", label: "Pending User Approvals", link: "/users?status=PENDING", color: "bg-amber-50 border-amber-200 text-amber-800" },
-  { key: "pendingMatrimonyApprovals", label: "Pending Matrimony", link: "/matrimony", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  { key: "pendingMatrimonyApprovals", label: "Matrimony Requests", link: "/matrimony", color: "bg-amber-50 border-amber-200 text-amber-800" },
   { key: "pendingBusinessApprovals", label: "Pending Business", link: "/business", color: "bg-amber-50 border-amber-200 text-amber-800" },
   { key: "reportedPosts", label: "Reported Posts", link: "/reports", color: "bg-red-50 border-red-200 text-red-800" }
 ] as const;
@@ -44,12 +44,6 @@ export function DashboardPage() {
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
           >
             View Pending Approvals
-          </Link>
-          <Link
-            to="/matrimony"
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Matrimony Approval
           </Link>
           <Link
             to="/business"

@@ -9,6 +9,38 @@ import {
 import { StatusBadge } from "../components/StatusBadge";
 import { useToast } from "../context/ToastContext";
 
+function pathLooksLikeImage(url: string): boolean {
+  const path = url.split("?")[0].toLowerCase();
+  return /\.(jpe?g|png|webp|gif)$/.test(path);
+}
+
+function MediaPreview({ label, url }: { label: string; url: string }) {
+  const isImage = pathLooksLikeImage(url);
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
+      {isImage ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block">
+          <img
+            src={url}
+            alt={label}
+            className="max-h-64 max-w-full rounded-md border border-slate-200 object-contain"
+          />
+        </a>
+      ) : (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          Open document (PDF or file)
+        </a>
+      )}
+    </div>
+  );
+}
+
 function DataCompare({
   current,
   pending
@@ -18,6 +50,18 @@ function DataCompare({
 }) {
   const keys = [...new Set([...Object.keys(pending), ...Object.keys(current ?? {})])].filter(Boolean);
   if (keys.length === 0) return <p className="text-slate-500 text-sm">No fields</p>;
+
+  const formatVal = (key: string, val: unknown) => {
+    if (val == null) return "—";
+    if (
+      (key === "profilePhotoUrl" || key === "horoscopeDocumentUrl") &&
+      typeof val === "string" &&
+      val.length > 0
+    ) {
+      return "Uploaded — see preview below";
+    }
+    return String(val);
+  };
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -36,8 +80,8 @@ function DataCompare({
             return (
               <tr key={key} className={`border-b border-slate-100 ${changed ? "bg-amber-50" : ""}`}>
                 <td className="py-2 pr-4 font-mono text-slate-500">{key}</td>
-                <td className="py-2 pr-4 text-slate-700">{cur != null ? String(cur) : "—"}</td>
-                <td className="py-2 text-slate-700">{pen != null ? String(pen) : "—"}</td>
+                <td className="py-2 pr-4 text-slate-700">{formatVal(key, cur)}</td>
+                <td className="py-2 text-slate-700">{formatVal(key, pen)}</td>
               </tr>
             );
           })}
@@ -109,21 +153,19 @@ export function MatrimonyApprovalPage() {
                   <p className="mt-1 text-xs text-slate-500">
                     Submitted {new Date(u.submittedAt).toLocaleString()}
                   </p>
+                  {u.submittedForReview === false && (
+                    <p className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900">
+                      Draft only — user has not pressed Submit in the app yet. You can still approve or reject.
+                    </p>
+                  )}
                 </div>
               </div>
               <DataCompare current={u.currentApproved} pending={u.data} />
-              {u.data?.horoscopeDocumentUrl != null && (
-                <p className="mt-2 text-sm text-slate-600">
-                  Horoscope:{" "}
-                  <a
-                    href={String(u.data.horoscopeDocumentUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    View document
-                  </a>
-                </p>
+              {typeof u.data?.profilePhotoUrl === "string" && u.data.profilePhotoUrl && (
+                <MediaPreview label="Profile photo (pending)" url={u.data.profilePhotoUrl} />
+              )}
+              {typeof u.data?.horoscopeDocumentUrl === "string" && u.data.horoscopeDocumentUrl && (
+                <MediaPreview label="Horoscope document" url={u.data.horoscopeDocumentUrl} />
               )}
               <div className="mt-4 flex gap-3">
                 <button
