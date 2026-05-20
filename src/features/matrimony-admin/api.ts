@@ -43,6 +43,17 @@ export async function approveMatrimonyRequest(id: number, remarks?: string): Pro
   });
 }
 
+export async function updateMatrimonyCandidatePhoto(
+  id: number,
+  status: "APPROVED" | "REJECTED" | "REUPLOAD_REQUESTED",
+  remarks?: string
+): Promise<void> {
+  await fetchApi(`/api/admin/matrimony/requests/${id}/candidate-photo`, {
+    method: "POST",
+    body: JSON.stringify({ status, remarks: remarks ?? undefined })
+  });
+}
+
 export async function rejectMatrimonyRequest(
   id: number,
   reasonCode: string,
@@ -111,4 +122,46 @@ export async function getMatrimonyConfig(): Promise<{
   changeSections: { key: string; label: string; fields: string[] }[];
 }> {
   return fetchApi("/api/admin/matrimony/config");
+}
+
+export type MatrimonyReportListItem = {
+  id: number;
+  reason: string;
+  details: string | null;
+  status: string;
+  adminRemarks: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  reporter: { id: number; name: string; email: string | null };
+  reportedUser: { id: number; name: string; email: string | null };
+};
+
+export async function listMatrimonyReports(params: {
+  page?: number;
+  limit?: number;
+  status?: string;
+}): Promise<{
+  items: MatrimonyReportListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  const q = new URLSearchParams();
+  if (params.page) q.set("page", String(params.page));
+  if (params.limit) q.set("limit", String(params.limit));
+  if (params.status) q.set("status", params.status);
+  const qs = q.toString();
+  return fetchApi(`/api/admin/matrimony/reports${qs ? `?${qs}` : ""}`);
+}
+
+export async function resolveMatrimonyReport(
+  id: number,
+  status: "RESOLVED" | "DISMISSED",
+  adminRemarks?: string
+): Promise<void> {
+  await fetchApi(`/api/admin/matrimony/reports/${id}/resolve`, {
+    method: "POST",
+    body: JSON.stringify({ status, adminRemarks: adminRemarks ?? undefined })
+  });
 }

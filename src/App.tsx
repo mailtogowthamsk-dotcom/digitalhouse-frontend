@@ -12,6 +12,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
 import { MatrimonyRequestsListPage } from "./features/matrimony-admin/pages/MatrimonyRequestsListPage";
 import { MatrimonyRequestDetailPage } from "./features/matrimony-admin/pages/MatrimonyRequestDetailPage";
+import { MatrimonyReportsListPage } from "./features/matrimony-admin/pages/MatrimonyReportsListPage";
 import { BusinessApprovalPage } from "./pages/BusinessApprovalPage";
 import { PostsModerationPage } from "./pages/PostsModerationPage";
 import { JobPortalPage } from "./pages/JobPortalPage";
@@ -33,6 +34,7 @@ const titles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/users": "User Management",
   "/matrimony": "Matrimony Requests",
+  "/matrimony-reports": "Matrimony Reports",
   "/business": "Business Approval",
   "/posts": "Posts Moderation",
   "/job-portal": "Job Portal",
@@ -76,6 +78,7 @@ export default function App() {
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="users" element={<UserManagementPage />} />
               <Route path="matrimony" element={<MatrimonyRequestsListPage />} />
+              <Route path="matrimony-reports" element={<MatrimonyReportsListPage />} />
               <Route path="matrimony/:id" element={<MatrimonyRequestDetailPage />} />
               <Route path="business" element={<BusinessApprovalPage />} />
               <Route path="posts" element={<PostsModerationPage />} />

@@ -5,6 +5,7 @@ const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: "📊" },
   { to: "/users", label: "User Management", icon: "👥" },
   { to: "/matrimony", label: "Matrimony Requests", icon: "💍" },
+  { to: "/matrimony-reports", label: "Matrimony Reports", icon: "🚩" },
   { to: "/business", label: "Business Approval", icon: "🏢" },
   { to: "/posts", label: "Posts Moderation", icon: "📝" },
   { to: "/job-portal", label: "Job Portal", icon: "💼" },

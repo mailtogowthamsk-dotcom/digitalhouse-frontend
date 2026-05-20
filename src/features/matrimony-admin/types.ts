@@ -14,6 +14,9 @@ export type MatrimonyStats = {
   rejectedProfiles: number;
   underReview: number;
   newToday: number;
+  totalInterests: number;
+  mutualMatches: number;
+  pendingReports: number;
 };
 
 export type MatrimonyRequestListItem = {

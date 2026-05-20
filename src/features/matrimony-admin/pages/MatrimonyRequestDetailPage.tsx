@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMatrimonyRequestDetail,
   approveMatrimonyRequest,
+  updateMatrimonyCandidatePhoto,
   rejectMatrimonyRequest,
   requestMatrimonyChanges,
   suspendMatrimonyProfile,
@@ -111,6 +112,16 @@ export function MatrimonyRequestDetailPage() {
     }) => addMatrimonyNote(requestId, content, noteType),
     onSuccess: () => {
       addToast("Note added.", "success");
+      invalidate();
+    },
+    onError: (e) => addToast(e instanceof Error ? e.message : "Failed", "error")
+  });
+
+  const photoMut = useMutation({
+    mutationFn: (status: "APPROVED" | "REJECTED" | "REUPLOAD_REQUESTED") =>
+      updateMatrimonyCandidatePhoto(requestId, status),
+    onSuccess: (_d, status) => {
+      addToast(`Photo marked ${status.replace(/_/g, " ").toLowerCase()}.`, "success");
       invalidate();
     },
     onError: (e) => addToast(e instanceof Error ? e.message : "Failed", "error")
@@ -349,6 +360,13 @@ export function MatrimonyRequestDetailPage() {
             <OwnerCandidateMediaCompare
               photoVerification={data.photoVerification}
               horoscopeUrl={m.horoscopeDocumentUrl as string}
+              canModeratePhoto={
+                data.workflowStatus === "SUBMITTED" || data.workflowStatus === "UNDER_REVIEW"
+              }
+              photoActionPending={photoMut.isPending}
+              onPhotoApprove={() => photoMut.mutate("APPROVED")}
+              onPhotoReject={() => photoMut.mutate("REJECTED")}
+              onPhotoRequestReupload={() => photoMut.mutate("REUPLOAD_REQUESTED")}
             />
             {data.submissionSnapshot &&
               (data.workflowStatus === "RESUBMITTED" || data.workflowStatus === "CHANGES_REQUESTED") && (

@@ -9,12 +9,15 @@ const cards: {
   { key: "approvedProfiles", label: "Approved Profiles", accent: "border-emerald-400 bg-emerald-50" },
   { key: "rejectedProfiles", label: "Rejected Profiles", accent: "border-red-400 bg-red-50" },
   { key: "underReview", label: "Under Review", accent: "border-blue-400 bg-blue-50" },
-  { key: "newToday", label: "New Today", accent: "border-primary bg-blue-50" }
+  { key: "newToday", label: "New Today", accent: "border-primary bg-blue-50" },
+  { key: "totalInterests", label: "Total Interests", accent: "border-violet-400 bg-violet-50" },
+  { key: "mutualMatches", label: "Mutual Matches", accent: "border-teal-400 bg-teal-50" },
+  { key: "pendingReports", label: "Pending Reports", accent: "border-orange-400 bg-orange-50" }
 ];
 
 export function SummaryCards({ stats, loading }: { stats?: MatrimonyStats; loading?: boolean }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
       {cards.map((c) => (
         <div
           key={c.key}

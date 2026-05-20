@@ -38,10 +38,20 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function OwnerCandidateMediaCompare({
   photoVerification,
-  horoscopeUrl
+  horoscopeUrl,
+  canModeratePhoto = false,
+  photoActionPending = false,
+  onPhotoApprove,
+  onPhotoReject,
+  onPhotoRequestReupload
 }: {
   photoVerification?: PhotoVerification | null;
   horoscopeUrl?: string | null;
+  canModeratePhoto?: boolean;
+  photoActionPending?: boolean;
+  onPhotoApprove?: () => void;
+  onPhotoReject?: () => void;
+  onPhotoRequestReupload?: () => void;
 }) {
   const [broken, setBroken] = useState<Record<string, boolean>>({});
   const pv = photoVerification ?? {};
@@ -51,6 +61,8 @@ export function OwnerCandidateMediaCompare({
   const status = pv.candidatePhotoStatus
     ? STATUS_LABELS[pv.candidatePhotoStatus] ?? pv.candidatePhotoStatus
     : null;
+  const showPhotoActions =
+    canModeratePhoto && !!candidate && pv.candidatePhotoStatus !== "APPROVED";
 
   return (
     <div className="space-y-4">
@@ -66,6 +78,34 @@ export function OwnerCandidateMediaCompare({
         </p>
         {status && (
           <p className="mt-1 text-xs font-medium text-amber-900">Candidate photo status: {status}</p>
+        )}
+        {showPhotoActions && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              disabled={photoActionPending}
+              onClick={onPhotoApprove}
+            >
+              Approve photo
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+              disabled={photoActionPending}
+              onClick={onPhotoRequestReupload}
+            >
+              Request reupload
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              disabled={photoActionPending}
+              onClick={onPhotoReject}
+            >
+              Reject photo
+            </button>
+          </div>
         )}
       </div>
 
