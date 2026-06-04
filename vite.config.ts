@@ -5,7 +5,21 @@ const apiProxy = {
   "/digitalhouse/backend": {
     target: "http://localhost:4000",
     changeOrigin: true,
-    rewrite: (path: string) => path.replace(/^\/digitalhouse\/backend/, "")
+    rewrite: (path: string) => path.replace(/^\/digitalhouse\/backend/, ""),
+    configure: (proxy) => {
+      proxy.on("error", (_err, _req, res) => {
+        if (res && "writeHead" in res && !res.headersSent) {
+          res.writeHead(503, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              ok: false,
+              message:
+                "Backend API is not running. In another terminal: cd backend && npm run dev (port 4000)."
+            })
+          );
+        }
+      });
+    }
   }
 };
 

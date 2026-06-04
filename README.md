@@ -4,13 +4,17 @@ Admin UI for reviewing **pending profile updates** (Matrimony & Business section
 
 ## Setup
 
-1. Copy `.env.example` to `.env` and set `VITE_ADMIN_KEY` (same as backend `ADMIN_API_KEY`).
+1. In **backend** `.env`, set admin login (used by the login form):
+   - `ADMIN_EMAILS=your@email.com` (comma-separated)
+   - `ADMIN_PASSWORD=your_password`
 
-2. Start the **backend** (port **4000**):
+2. Start the **backend first** (port **4000**) — required or login returns 503/500:
 
 ```bash
 cd ../backend && npm run dev
 ```
+
+Wait for: `Digital House API listening on http://0.0.0.0:4000`
 
 3. Start the **admin UI**:
 
