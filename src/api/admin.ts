@@ -48,10 +48,55 @@ export type UserListItem = {
 
 export type UsersListResponse = { users: UserListItem[]; total: number; page: number; limit: number };
 
-export async function getUsers(page = 1, limit = 20, status?: string): Promise<UsersListResponse> {
+export async function getUsers(
+  page = 1,
+  limit = 20,
+  status?: string,
+  q?: string
+): Promise<UsersListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (status) params.set("status", status);
+  if (q?.trim()) params.set("q", q.trim());
   return fetchApi<UsersListResponse>(`/api/admin/users?${params}`);
+}
+
+export type NotificationAudienceStats = {
+  approvedUsers: number;
+  usersWithPushTokens: number;
+  totalPushTokens: number;
+  fcmConfigured: boolean;
+};
+
+export type AdminBroadcastPayload = {
+  title: string;
+  body: string;
+  category?: "SOCIAL" | "MATRIMONY" | "MESSAGES" | "COMMUNITY" | "SYSTEM";
+  userIds?: number[];
+  actionType?: string;
+  actionTargetId?: string | null;
+  persistInApp?: boolean;
+};
+
+export type AdminBroadcastResult = {
+  sent: number;
+  total: number;
+  persistInApp: boolean;
+  inAppSent: number;
+  pushTargets: number;
+  pushSent: number | null;
+};
+
+export async function getNotificationAudienceStats(): Promise<NotificationAudienceStats> {
+  return fetchApi<NotificationAudienceStats>("/api/admin/notifications/stats");
+}
+
+export async function adminBroadcastNotification(
+  payload: AdminBroadcastPayload
+): Promise<AdminBroadcastResult> {
+  return fetchApi<AdminBroadcastResult>("/api/admin/notifications/broadcast", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
 export type PendingUser = {

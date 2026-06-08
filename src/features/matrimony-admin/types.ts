@@ -65,6 +65,7 @@ export type MatrimonyListFilters = {
   verificationStatus?: "complete" | "incomplete" | "any";
   search?: string;
   includeDrafts?: boolean;
+  pendingReviewOnly?: boolean;
 };
 
 export type VerificationState = Record<

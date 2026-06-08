@@ -19,7 +19,8 @@ const defaultFilters: MatrimonyListFilters = {
   limit: 20,
   sortDir: "desc",
   verificationStatus: "any",
-  includeDrafts: true
+  includeDrafts: false,
+  pendingReviewOnly: true
 };
 
 export function MatrimonyRequestsListPage() {
@@ -34,7 +35,8 @@ export function MatrimonyRequestsListPage() {
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["matrimony-admin-stats"],
-    queryFn: getMatrimonyStats
+    queryFn: getMatrimonyStats,
+    refetchInterval: 45_000
   });
 
   const {
@@ -45,7 +47,8 @@ export function MatrimonyRequestsListPage() {
     error: listError
   } = useQuery({
     queryKey: ["matrimony-admin-requests", filters],
-    queryFn: () => listMatrimonyRequests(filters)
+    queryFn: () => listMatrimonyRequests(filters),
+    refetchInterval: 45_000
   });
 
   const invalidate = () => {

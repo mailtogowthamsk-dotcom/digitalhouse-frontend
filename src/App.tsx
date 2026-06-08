@@ -13,6 +13,8 @@ import { UserManagementPage } from "./pages/UserManagementPage";
 import { MatrimonyRequestsListPage } from "./features/matrimony-admin/pages/MatrimonyRequestsListPage";
 import { MatrimonyRequestDetailPage } from "./features/matrimony-admin/pages/MatrimonyRequestDetailPage";
 import { MatrimonyReportsListPage } from "./features/matrimony-admin/pages/MatrimonyReportsListPage";
+import { MatrimonySubscriptionsPage } from "./features/matrimony-subscriptions-admin/pages/MatrimonySubscriptionsPage";
+import { MatrimonySubscriptionDetailPage } from "./features/matrimony-subscriptions-admin/pages/MatrimonySubscriptionDetailPage";
 import { BusinessApprovalPage } from "./pages/BusinessApprovalPage";
 import { PostsModerationPage } from "./pages/PostsModerationPage";
 import { JobPortalPage } from "./pages/JobPortalPage";
@@ -35,6 +37,7 @@ const titles: Record<string, string> = {
   "/users": "User Management",
   "/matrimony": "Matrimony Requests",
   "/matrimony-reports": "Matrimony Reports",
+  "/matrimony-subscriptions": "Matrimony Subscriptions",
   "/business": "Business Approval",
   "/posts": "Posts Moderation",
   "/job-portal": "Job Portal",
@@ -51,7 +54,11 @@ function LayoutWithTitle() {
   const path = location.pathname;
   const title =
     titles[path] ??
-    (path.startsWith("/matrimony/") ? "Matrimony Review" : "Admin");
+    (path.startsWith("/matrimony-subscriptions/") && path !== "/matrimony-subscriptions"
+      ? "Subscription detail"
+      : path.startsWith("/matrimony/") && !path.startsWith("/matrimony-subscriptions")
+        ? "Matrimony Review"
+        : "Admin");
   useEffect(() => {
     (window as any).__PAGE_TITLE__ = title;
   }, [title]);
@@ -79,6 +86,11 @@ export default function App() {
               <Route path="users" element={<UserManagementPage />} />
               <Route path="matrimony" element={<MatrimonyRequestsListPage />} />
               <Route path="matrimony-reports" element={<MatrimonyReportsListPage />} />
+              <Route path="matrimony-subscriptions" element={<MatrimonySubscriptionsPage />} />
+              <Route
+                path="matrimony-subscriptions/:id"
+                element={<MatrimonySubscriptionDetailPage />}
+              />
               <Route path="matrimony/:id" element={<MatrimonyRequestDetailPage />} />
               <Route path="business" element={<BusinessApprovalPage />} />
               <Route path="posts" element={<PostsModerationPage />} />
