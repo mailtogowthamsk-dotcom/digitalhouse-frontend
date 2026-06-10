@@ -11,6 +11,7 @@ export function UserManagementPage() {
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [loginSourceFilter, setLoginSourceFilter] = useState<string>("");
   const [viewingUser, setViewingUser] = useState<UserListItem | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
     type: "approve" | "reject";
@@ -19,8 +20,9 @@ export function UserManagementPage() {
   } | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-users", page, statusFilter],
-    queryFn: () => getUsers(page, 20, statusFilter || undefined)
+    queryKey: ["admin-users", page, statusFilter, loginSourceFilter],
+    queryFn: () =>
+      getUsers(page, 20, statusFilter || undefined, undefined, loginSourceFilter || undefined)
   });
 
   const approveMutation = useMutation({
@@ -51,6 +53,11 @@ export function UserManagementPage() {
     { key: "id", label: "ID" },
     { key: "fullName", label: "Full Name" },
     { key: "email", label: "Email" },
+    {
+      key: "loginSource",
+      label: "Login source",
+      render: (r: UserListItem) => r.loginSource ?? "Existing Login"
+    },
     { key: "mobile", label: "Mobile", render: (r: UserListItem) => r.mobile ?? "—" },
     {
       key: "createdAt",
@@ -119,18 +126,36 @@ export function UserManagementPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-slate-900">User Management</h2>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="">All statuses</option>
-          <option value="PENDING">Pending</option>
-          <option value="APPROVED">Active</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={loginSourceFilter}
+            onChange={(e) => {
+              setPage(1);
+              setLoginSourceFilter(e.target.value);
+            }}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All login sources</option>
+            <option value="google">Google</option>
+            <option value="existing">Existing login</option>
+            <option value="both">Linked (both)</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setPage(1);
+              setStatusFilter(e.target.value);
+            }}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Active</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
       </div>
       {isLoading ? (
         <p className="text-slate-600">Loading…</p>

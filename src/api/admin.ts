@@ -43,6 +43,7 @@ export type UserListItem = {
   email: string;
   mobile: string | null;
   status: string;
+  loginSource?: "Google" | "Existing Login" | "Both";
   createdAt: string;
 };
 
@@ -52,11 +53,13 @@ export async function getUsers(
   page = 1,
   limit = 20,
   status?: string,
-  q?: string
+  q?: string,
+  loginSource?: string
 ): Promise<UsersListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (status) params.set("status", status);
   if (q?.trim()) params.set("q", q.trim());
+  if (loginSource) params.set("loginSource", loginSource);
   return fetchApi<UsersListResponse>(`/api/admin/users?${params}`);
 }
 
