@@ -23,6 +23,10 @@ export function MatrimonySubscriptionDetailPage() {
       await recordPaymentRefund(orderId, { note: refundNote || undefined, cancelSubscription: true });
       addToast("Refund recorded.", "success");
       void queryClient.invalidateQueries({ queryKey: ["matrimony-sub-detail", subscriptionId] });
+      void queryClient.invalidateQueries({ queryKey: ["matrimony-sub-overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["matrimony-sub-list"] });
+      void queryClient.invalidateQueries({ queryKey: ["matrimony-pay-list"] });
+      void queryClient.invalidateQueries({ queryKey: ["matrimony-sub-reports"] });
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed", "error");
     }

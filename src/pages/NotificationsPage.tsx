@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { useToast } from "../context/ToastContext";
 import {
@@ -43,6 +43,7 @@ type AudienceMode = "all" | "selected";
 
 export function NotificationsPage() {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState<AdminBroadcastPayload["category"]>("COMMUNITY");
@@ -108,6 +109,7 @@ export function NotificationsPage() {
       setLastResult(msg);
       addToast(msg, "success");
       setConfirmOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["admin-notification-stats"] });
     },
     onError: (err) => {
       let msg = "Broadcast failed";

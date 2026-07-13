@@ -20,10 +20,13 @@ import { PostsModerationPage } from "./pages/PostsModerationPage";
 import { JobPortalPage } from "./pages/JobPortalPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
 import { HelpingHandPage } from "./pages/HelpingHandPage";
+import { MasterDataPage } from "./pages/MasterDataPage";
 import { CommunityContentPage } from "./pages/CommunityContentPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { PlatformManagementPage } from "./pages/PlatformManagementPage";
+import { AdminErrorBoundary } from "./components/AdminErrorBoundary";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -43,9 +46,11 @@ const titles: Record<string, string> = {
   "/job-portal": "Job Portal",
   "/marketplace": "Marketplace",
   "/helping-hand": "Helping Hand",
+  "/master-data": "Master Data",
   "/community-content": "Community Content",
   "/reports": "Reports & Complaints",
   "/notifications": "Notifications",
+  "/platform": "Platform Management",
   "/settings": "Settings & Roles"
 };
 
@@ -70,7 +75,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ToastProvider>
-        <BrowserRouter>
+        <BrowserRouter basename="/digitalhouse/admin">
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -78,7 +83,9 @@ export default function App() {
               path="/"
               element={
                 <ProtectedRoute>
-                  <LayoutWithTitle />
+                  <AdminErrorBoundary>
+                    <LayoutWithTitle />
+                  </AdminErrorBoundary>
                 </ProtectedRoute>
               }
             >
@@ -97,9 +104,11 @@ export default function App() {
               <Route path="job-portal" element={<JobPortalPage />} />
               <Route path="marketplace" element={<MarketplacePage />} />
               <Route path="helping-hand" element={<HelpingHandPage />} />
+              <Route path="master-data" element={<MasterDataPage />} />
               <Route path="community-content" element={<CommunityContentPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="platform" element={<PlatformManagementPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

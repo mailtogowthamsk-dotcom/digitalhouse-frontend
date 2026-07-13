@@ -17,11 +17,22 @@ export function StatusBadge({
 }) {
   const v: Variant =
     variant ??
-    (status === "PENDING" || status === "Pending"
+    (status === "PENDING" || status === "Pending" || status === "IN_PROGRESS" || status === "ESCALATED"
       ? "pending"
-      : status === "APPROVED" || status === "Active" || status === "APPROVED"
+      : status === "APPROVED" ||
+          status === "Active" ||
+          status === "OPEN" ||
+          status === "Open" ||
+          status === "COMPLETED" ||
+          status === "RESOLVED"
         ? "approved"
-        : status === "REJECTED" || status === "Rejected"
+        : status === "REJECTED" ||
+            status === "Rejected" ||
+            status === "CLOSED" ||
+            status === "Closed" ||
+            status === "CANCELLED" ||
+            status === "DISMISSED" ||
+            status === "SUSPENDED"
           ? "rejected"
           : status === "Suspended"
             ? "suspended"

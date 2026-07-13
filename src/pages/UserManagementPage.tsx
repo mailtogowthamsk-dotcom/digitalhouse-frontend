@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getUsers, approveUser, rejectUser, type UserListItem } from "../api/admin";
+import { reactivateAdminUser, suspendAdminUser } from "../api/reportsAdmin";
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { ConfirmModal } from "../components/ConfirmModal";
@@ -9,17 +11,26 @@ import { useToast } from "../context/ToastContext";
 export function UserManagementPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const [searchParams] = useSearchParams();
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") || "");
   const [loginSourceFilter, setLoginSourceFilter] = useState<string>("");
   const [viewingUser, setViewingUser] = useState<UserListItem | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
-    type: "approve" | "reject";
+    type: "approve" | "reject" | "suspend" | "reactivate";
     user: UserListItem;
     remarks?: string;
   } | null>(null);
 
-  const { data, isLoading } = useQuery({
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (status != null) {
+      setStatusFilter(status);
+      setPage(1);
+    }
+  }, [searchParams]);
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-users", page, statusFilter, loginSourceFilter],
     queryFn: () =>
       getUsers(page, 20, statusFilter || undefined, undefined, loginSourceFilter || undefined)
@@ -47,6 +58,29 @@ export function UserManagementPage() {
       addToast("User rejected.", "success");
     },
     onError: (err) => addToast(err instanceof Error ? err.message : "Failed to reject", "error")
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: ({ userId }: { userId: number }) => suspendAdminUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      setConfirmAction(null);
+      addToast("User suspended.", "success");
+    },
+    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to suspend", "error")
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: ({ userId }: { userId: number }) => reactivateAdminUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      setConfirmAction(null);
+      addToast("User reactivated.", "success");
+    },
+    onError: (err) =>
+      addToast(err instanceof Error ? err.message : "Failed to reactivate", "error")
   });
 
   const columns = [
@@ -100,22 +134,22 @@ export function UserManagementPage() {
             </>
           )}
           {(r.status === "APPROVED" || r.status === "Active") && (
-            <>
-              <button
-                type="button"
-                onClick={() => addToast("Suspend / Reactivate will be available when backend supports it.", "info")}
-                className="text-sm font-medium text-amber-600 hover:underline"
-              >
-                Suspend
-              </button>
-              <button
-                type="button"
-                onClick={() => addToast("Reactivate will be available when backend supports it.", "info")}
-                className="text-sm font-medium text-slate-600 hover:underline"
-              >
-                Reactivate
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setConfirmAction({ type: "suspend", user: r })}
+              className="text-sm font-medium text-amber-600 hover:underline"
+            >
+              Suspend
+            </button>
+          )}
+          {r.status === "SUSPENDED" && (
+            <button
+              type="button"
+              onClick={() => setConfirmAction({ type: "reactivate", user: r })}
+              className="text-sm font-medium text-emerald-600 hover:underline"
+            >
+              Reactivate
+            </button>
           )}
         </div>
       )
@@ -153,12 +187,20 @@ export function UserManagementPage() {
             <option value="">All statuses</option>
             <option value="PENDING">Pending</option>
             <option value="APPROVED">Active</option>
+            <option value="SUSPENDED">Suspended</option>
             <option value="REJECTED">Rejected</option>
           </select>
         </div>
       </div>
       {isLoading ? (
         <p className="text-slate-600">Loading…</p>
+      ) : isError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {(error as Error)?.message || "Failed to load users."}{" "}
+          <button type="button" className="font-semibold underline" onClick={() => void refetch()}>
+            Retry
+          </button>
+        </div>
       ) : (
         <>
           <DataTable
@@ -221,6 +263,29 @@ export function UserManagementPage() {
               });
             }
           }}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+      {confirmAction?.type === "suspend" && (
+        <ConfirmModal
+          open
+          title="Suspend User"
+          message={`Suspend ${confirmAction.user.fullName}? They will not be able to sign in until reactivated.`}
+          confirmLabel="Suspend"
+          variant="danger"
+          confirmDisabled={suspendMutation.isPending}
+          onConfirm={() => suspendMutation.mutate({ userId: confirmAction.user.id })}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+      {confirmAction?.type === "reactivate" && (
+        <ConfirmModal
+          open
+          title="Reactivate User"
+          message={`Reactivate ${confirmAction.user.fullName}? They will be able to sign in again.`}
+          confirmLabel="Reactivate"
+          confirmDisabled={reactivateMutation.isPending}
+          onConfirm={() => reactivateMutation.mutate({ userId: confirmAction.user.id })}
           onCancel={() => setConfirmAction(null)}
         />
       )}

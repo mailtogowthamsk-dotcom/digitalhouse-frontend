@@ -7,7 +7,10 @@ import { fetchApi, setToken } from "./client";
 /** Relative only — never https://infosensetechnologies.com/... (CORS with www admin site). */
 const ADMIN_LOGIN_URL = "/digitalhouse/backend/api/admin/login";
 
-export type AdminLoginResponse = { token: string; admin: { email: string } };
+export type AdminLoginResponse = {
+  token: string;
+  admin: { email: string; role?: string; roleLabel?: string };
+};
 
 export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
   const res = await fetch(ADMIN_LOGIN_URL, {

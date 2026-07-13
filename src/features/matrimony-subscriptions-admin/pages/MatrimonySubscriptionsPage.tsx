@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getSubscriptionOverview,
   getRevenueReports,
@@ -25,11 +25,24 @@ const defaultFilters: SubscriptionListFilters = {
 
 export function MatrimonySubscriptionsPage() {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<"subscriptions" | "payments" | "reports">("subscriptions");
   const [filters, setFilters] = useState<SubscriptionListFilters>(defaultFilters);
+  const [searchDraft, setSearchDraft] = useState("");
   const [grantOpen, setGrantOpen] = useState(false);
   const [grantUserId, setGrantUserId] = useState("");
   const [grantPlan, setGrantPlan] = useState<"GOLD" | "PLATINUM">("GOLD");
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setFilters((f) => {
+        const next = searchDraft.trim() || undefined;
+        if ((f.q || undefined) === next) return f;
+        return { ...f, q: next, page: 1 };
+      });
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [searchDraft]);
 
   const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ["matrimony-sub-overview"],
@@ -112,8 +125,8 @@ export function MatrimonySubscriptionsPage() {
           <input
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
             placeholder="Search name, mobile, payment ID…"
-            value={filters.q ?? ""}
-            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value, page: 1 }))}
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
           />
           {tab === "subscriptions" ? (
             <>
@@ -351,6 +364,10 @@ export function MatrimonySubscriptionsPage() {
           onSuccess={() => {
             setGrantOpen(false);
             addToast("Plan granted.", "success");
+            void queryClient.invalidateQueries({ queryKey: ["matrimony-sub-overview"] });
+            void queryClient.invalidateQueries({ queryKey: ["matrimony-sub-list"] });
+            void queryClient.invalidateQueries({ queryKey: ["matrimony-pay-list"] });
+            void queryClient.invalidateQueries({ queryKey: ["matrimony-sub-reports"] });
           }}
           onError={(m) => addToast(m, "error")}
         />

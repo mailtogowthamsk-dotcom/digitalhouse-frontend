@@ -36,7 +36,14 @@ export async function fetchApi<T>(path: string, options: RequestInit = {}): Prom
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    let message = text || `HTTP ${res.status}`;
+    try {
+      const parsed = JSON.parse(text) as { message?: string };
+      if (parsed?.message && typeof parsed.message === "string") message = parsed.message;
+    } catch {
+      /* keep raw text */
+    }
+    throw new Error(message);
   }
   const contentType = res.headers.get("content-type");
   if (contentType?.includes("application/json")) return res.json() as Promise<T>;

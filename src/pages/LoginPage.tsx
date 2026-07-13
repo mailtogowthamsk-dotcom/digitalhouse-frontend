@@ -19,7 +19,13 @@ export function LoginPage() {
     setLoading(true);
     try {
       const result = await adminLogin(email.trim(), password);
-      login(result.admin.email);
+      const role =
+        result.admin.role === "SUPER_ADMIN" ||
+        result.admin.role === "ADMIN" ||
+        result.admin.role === "MODERATOR"
+          ? result.admin.role
+          : null;
+      login(result.admin.email, role);
       addToast("Signed in successfully.", "success");
       navigate("/dashboard", { replace: true });
     } catch (err) {

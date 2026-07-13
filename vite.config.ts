@@ -25,7 +25,23 @@ const apiProxy = {
 
 export default defineConfig({
   base: "/digitalhouse/admin/",
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "root-favicon",
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === "/favicon.ico") {
+            res.statusCode = 302;
+            res.setHeader("Location", "/digitalhouse/admin/favicon.svg");
+            res.end();
+            return;
+          }
+          next();
+        });
+      }
+    }
+  ],
   server: {
     port: 3001,
     proxy: apiProxy

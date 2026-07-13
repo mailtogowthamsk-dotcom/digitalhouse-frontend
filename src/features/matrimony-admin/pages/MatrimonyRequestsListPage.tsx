@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -29,9 +29,21 @@ export function MatrimonyRequestsListPage() {
   const { addToast } = useToast();
   const { adminEmail } = useAuth();
   const [filters, setFilters] = useState<MatrimonyListFilters>(defaultFilters);
+  const [searchDraft, setSearchDraft] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("OTHER");
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setFilters((f) => {
+        const next = searchDraft.trim() || undefined;
+        if ((f.search || undefined) === next) return f;
+        return { ...f, page: 1, search: next };
+      });
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [searchDraft]);
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["matrimony-admin-stats"],
@@ -105,10 +117,8 @@ export function MatrimonyRequestsListPage() {
             type="search"
             placeholder="Name, mobile, profile ID…"
             className="lg:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            value={filters.search ?? ""}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, page: 1, search: e.target.value || undefined }))
-            }
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
           />
           <select
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
