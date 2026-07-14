@@ -85,14 +85,11 @@ export function SettingsPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Settings & Roles</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Manage admin roles for whitelisted accounts. Permissions are enforced on sensitive
-            actions (approve users, suspend, escalate, master data writes, broadcasts, role
-            changes).
-          </p>
-        </div>
+        <p className="max-w-2xl text-sm text-slate-600">
+          Manage admin roles for whitelisted accounts. Permissions are enforced on sensitive
+          actions (approve users, suspend, escalate, master data writes, broadcasts, role
+          changes).
+        </p>
         {myRole ? (
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ROLE_COLORS[myRole]}`}>
             You: {overview?.me?.roleLabel ?? myRole}

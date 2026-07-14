@@ -43,11 +43,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 export type UserListItem = {
   id: number;
   fullName: string;
+  username?: string | null;
   email: string;
   mobile: string | null;
+  community?: string | null;
+  gender?: string | null;
   status: string;
   loginSource?: "Google" | "Existing Login" | "Both";
   createdAt: string;
+  updatedAt?: string;
 };
 
 export type UsersListResponse = { users: UserListItem[]; total: number; page: number; limit: number };
@@ -57,12 +61,22 @@ export async function getUsers(
   limit = 20,
   status?: string,
   q?: string,
-  loginSource?: string
+  loginSource?: string,
+  extras?: {
+    community?: string;
+    gender?: string;
+    sortBy?: string;
+    sortDir?: "asc" | "desc";
+  }
 ): Promise<UsersListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (status) params.set("status", status);
   if (q?.trim()) params.set("q", q.trim());
   if (loginSource) params.set("loginSource", loginSource);
+  if (extras?.community?.trim()) params.set("community", extras.community.trim());
+  if (extras?.gender?.trim()) params.set("gender", extras.gender.trim());
+  if (extras?.sortBy) params.set("sortBy", extras.sortBy);
+  if (extras?.sortDir) params.set("sortDir", extras.sortDir);
   return fetchApi<UsersListResponse>(`/api/admin/users?${params}`);
 }
 
@@ -148,9 +162,36 @@ export type PendingProfileUpdate = {
   submittedForReview?: boolean;
 };
 
-export async function getPendingUpdates(): Promise<PendingProfileUpdate[]> {
-  const data = await fetchApi<{ updates: PendingProfileUpdate[] }>("/api/admin/pending-updates");
-  return data.updates ?? [];
+export async function getPendingUpdates(opts?: {
+  section?: "MATRIMONY" | "BUSINESS";
+  page?: number;
+  limit?: number;
+  q?: string;
+}): Promise<{
+  updates: PendingProfileUpdate[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  const params = new URLSearchParams();
+  if (opts?.section) params.set("section", opts.section);
+  if (opts?.page != null) params.set("page", String(opts.page));
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  if (opts?.q?.trim()) params.set("q", opts.q.trim());
+  const qs = params.toString();
+  const data = await fetchApi<{
+    updates: PendingProfileUpdate[];
+    total?: number;
+    page?: number;
+    limit?: number;
+  }>(`/api/admin/pending-updates${qs ? `?${qs}` : ""}`);
+  const updates = data.updates ?? [];
+  return {
+    updates,
+    total: data.total ?? updates.length,
+    page: data.page ?? 1,
+    limit: data.limit ?? (updates.length || 20)
+  };
 }
 
 export async function approveProfileUpdate(updateId: number, remarks?: string): Promise<void> {

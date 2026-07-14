@@ -21,6 +21,7 @@ const navItems: Array<{ to: string; label: string; icon: string; module: string 
   { to: "/master-data", label: "Master Data", icon: "🗂️", module: "master_data" },
   { to: "/community-content", label: "Community Content", icon: "📜", module: "community_content" },
   { to: "/reports", label: "Reports & Complaints", icon: "⚠️", module: "reports" },
+  { to: "/support", label: "Help & Support", icon: "🆘", module: "support" },
   { to: "/notifications", label: "Notifications", icon: "🔔", module: "notifications" },
   { to: "/platform", label: "Platform Management", icon: "🎛️", module: "platform" },
   { to: "/settings", label: "Settings & Roles", icon: "⚙️", module: "settings" }

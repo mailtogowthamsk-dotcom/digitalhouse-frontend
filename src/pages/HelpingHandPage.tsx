@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cancelAdminHelpRequest,
@@ -13,6 +13,11 @@ import {
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { ConfirmModal } from "../components/ConfirmModal";
+import {
+  AdminListError,
+  AdminPagination,
+  AdminTableSkeleton
+} from "../components/admin/AdminListControls";
 import { useToast } from "../context/ToastContext";
 
 const CATEGORIES = [
@@ -34,6 +39,7 @@ export function HelpingHandPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [statusFilter, setStatusFilter] = useState<HelpStatusFilter>("all");
   const [category, setCategory] = useState("");
   const [searchDraft, setSearchDraft] = useState("");
@@ -41,10 +47,14 @@ export function HelpingHandPage() {
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [viewingId, setViewingId] = useState<number | null>(null);
 
+  useEffect(() => {
+    setPage(1);
+  }, [limit]);
+
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["admin-helping-hands", page, statusFilter, searchQ, category],
+    queryKey: ["admin-helping-hands", page, limit, statusFilter, searchQ, category],
     queryFn: () =>
-      listAdminHelpRequests(page, 20, statusFilter, searchQ || undefined, category || undefined)
+      listAdminHelpRequests(page, limit, statusFilter, searchQ || undefined, category || undefined)
   });
 
   const detailQuery = useQuery({
@@ -107,7 +117,6 @@ export function HelpingHandPage() {
     deleteMutation.isPending;
 
   const counts = data?.counts;
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.limit ?? 20)));
   const detail = detailQuery.data?.request;
 
   const columns = useMemo(
@@ -212,12 +221,9 @@ export function HelpingHandPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Helping Hands Moderation</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Review community help requests, freeze suspicious posts, mark completed, or remove abuse.
-          </p>
-        </div>
+        <p className="text-sm text-slate-600">
+          Review community help requests, freeze suspicious posts, mark completed, or remove abuse.
+        </p>
         <div className="flex flex-wrap gap-2 text-sm">
           <span className="rounded-lg bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
             Open: {counts?.open ?? 0}
@@ -297,55 +303,30 @@ export function HelpingHandPage() {
         </button>
       </div>
 
-      {isLoading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          Loading help requests…
-        </div>
+      {isLoading && !data ? (
+        <AdminTableSkeleton rows={8} cols={7} />
       ) : isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
-          <p className="text-sm text-red-700">
-            {error instanceof Error ? error.message : "Failed to load help requests."}
-          </p>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
-          >
-            Retry
-          </button>
-        </div>
-      ) : (
-        <DataTable
-          columns={columns as any}
-          data={(data?.requests ?? []) as any}
-          keyExtractor={(r) => (r as AdminHelpItem).id}
-          emptyMessage="No help requests found."
+        <AdminListError
+          message={error instanceof Error ? error.message : "Failed to load help requests."}
+          onRetry={() => void refetch()}
         />
+      ) : (
+        <>
+          <DataTable
+            columns={columns as any}
+            data={(data?.requests ?? []) as any}
+            keyExtractor={(r) => (r as AdminHelpItem).id}
+            emptyMessage="No help requests found."
+          />
+          <AdminPagination
+            page={page}
+            limit={limit}
+            total={data?.total ?? 0}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
+        </>
       )}
-
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-        <span>
-          Page {page} of {totalPages} · {data?.total ?? 0} results
-        </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 disabled:opacity-40"
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 disabled:opacity-40"
-          >
-            Next
-          </button>
-        </div>
-      </div>
 
       {viewingId != null ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

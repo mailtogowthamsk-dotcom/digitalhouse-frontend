@@ -460,8 +460,7 @@ export function PlatformManagementPage() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-slate-900">Platform Management</h2>
-        <p className="mt-1 max-w-3xl text-sm text-slate-600">
+        <p className="max-w-3xl text-sm text-slate-600">
           Operational control center for versions, maintenance, communications, feature visibility,
           subscriptions, and future monetization — without redeploying the apps.
         </p>

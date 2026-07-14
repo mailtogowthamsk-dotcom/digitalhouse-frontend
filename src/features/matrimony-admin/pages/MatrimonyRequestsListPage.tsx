@@ -11,12 +11,13 @@ import type { MatrimonyListFilters, MatrimonyRequestListItem } from "../types";
 import { SummaryCards } from "../components/SummaryCards";
 import { WorkflowBadge } from "../components/WorkflowBadge";
 import { TableSkeleton } from "../components/TableSkeleton";
+import { AdminPagination } from "../../../components/admin/AdminListControls";
 import { useToast } from "../../../context/ToastContext";
 import { useAuth } from "../../../context/AuthContext";
 
 const defaultFilters: MatrimonyListFilters = {
   page: 1,
-  limit: 20,
+  limit: 25,
   sortDir: "desc",
   verificationStatus: "any",
   includeDrafts: false,
@@ -101,12 +102,9 @@ export function MatrimonyRequestsListPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Matrimony Requests</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Review submitted profiles, verify documents, and manage approvals.
-          </p>
-        </div>
+        <p className="text-sm text-slate-600">
+          Review submitted profiles, verify documents, and manage approvals.
+        </p>
       </div>
 
       <SummaryCards stats={stats} loading={statsLoading} />
@@ -341,29 +339,20 @@ export function MatrimonyRequestsListPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3">
-            <p className="text-sm text-slate-600">
-              {data?.total ?? 0} total · page {data?.page ?? 1} of {data?.totalPages ?? 1}
-              {isFetching && " · updating…"}
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={(filters.page ?? 1) <= 1}
-                onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                disabled={(filters.page ?? 1) >= (data?.totalPages ?? 1)}
-                onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
+          <div className="border-t border-slate-200 px-4 py-3">
+            <AdminPagination
+              page={data?.page ?? filters.page ?? 1}
+              limit={filters.limit ?? 25}
+              total={data?.total ?? 0}
+              onPageChange={(p) => setFilters((f) => ({ ...f, page: p }))}
+              onLimitChange={(nextLimit) =>
+                setFilters((f) => ({ ...f, limit: nextLimit, page: 1 }))
+              }
+              className="mt-0"
+            />
+            {isFetching ? (
+              <p className="mt-2 text-xs text-slate-500">Updating…</p>
+            ) : null}
           </div>
         </div>
       )}

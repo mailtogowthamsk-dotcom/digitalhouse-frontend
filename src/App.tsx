@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
@@ -23,6 +22,7 @@ import { HelpingHandPage } from "./pages/HelpingHandPage";
 import { MasterDataPage } from "./pages/MasterDataPage";
 import { CommunityContentPage } from "./pages/CommunityContentPage";
 import { ReportsPage } from "./pages/ReportsPage";
+import { SupportPage } from "./pages/SupportPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { PlatformManagementPage } from "./pages/PlatformManagementPage";
@@ -35,85 +35,51 @@ const queryClient = new QueryClient({
   }
 });
 
-const titles: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/users": "User Management",
-  "/matrimony": "Matrimony Requests",
-  "/matrimony-reports": "Matrimony Reports",
-  "/matrimony-subscriptions": "Matrimony Subscriptions",
-  "/business": "Business Approval",
-  "/posts": "Posts Moderation",
-  "/job-portal": "Job Portal",
-  "/marketplace": "Marketplace",
-  "/helping-hand": "Helping Hand",
-  "/master-data": "Master Data",
-  "/community-content": "Community Content",
-  "/reports": "Reports & Complaints",
-  "/notifications": "Notifications",
-  "/platform": "Platform Management",
-  "/settings": "Settings & Roles"
-};
-
-function LayoutWithTitle() {
-  const location = useLocation();
-  const path = location.pathname;
-  const title =
-    titles[path] ??
-    (path.startsWith("/matrimony-subscriptions/") && path !== "/matrimony-subscriptions"
-      ? "Subscription detail"
-      : path.startsWith("/matrimony/") && !path.startsWith("/matrimony-subscriptions")
-        ? "Matrimony Review"
-        : "Admin");
-  useEffect(() => {
-    (window as any).__PAGE_TITLE__ = title;
-  }, [title]);
-  return <DashboardLayout />;
-}
-
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ToastProvider>
-        <BrowserRouter basename="/digitalhouse/admin">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <AdminErrorBoundary>
-                    <LayoutWithTitle />
-                  </AdminErrorBoundary>
-                </ProtectedRoute>
-              }
-            >
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="users" element={<UserManagementPage />} />
-              <Route path="matrimony" element={<MatrimonyRequestsListPage />} />
-              <Route path="matrimony-reports" element={<MatrimonyReportsListPage />} />
-              <Route path="matrimony-subscriptions" element={<MatrimonySubscriptionsPage />} />
+          <BrowserRouter basename="/digitalhouse/admin">
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
               <Route
-                path="matrimony-subscriptions/:id"
-                element={<MatrimonySubscriptionDetailPage />}
-              />
-              <Route path="matrimony/:id" element={<MatrimonyRequestDetailPage />} />
-              <Route path="business" element={<BusinessApprovalPage />} />
-              <Route path="posts" element={<PostsModerationPage />} />
-              <Route path="job-portal" element={<JobPortalPage />} />
-              <Route path="marketplace" element={<MarketplacePage />} />
-              <Route path="helping-hand" element={<HelpingHandPage />} />
-              <Route path="master-data" element={<MasterDataPage />} />
-              <Route path="community-content" element={<CommunityContentPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="platform" element={<PlatformManagementPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AdminErrorBoundary>
+                      <DashboardLayout />
+                    </AdminErrorBoundary>
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="users" element={<UserManagementPage />} />
+                <Route path="matrimony" element={<MatrimonyRequestsListPage />} />
+                <Route path="matrimony-reports" element={<MatrimonyReportsListPage />} />
+                <Route path="matrimony-subscriptions" element={<MatrimonySubscriptionsPage />} />
+                <Route
+                  path="matrimony-subscriptions/:id"
+                  element={<MatrimonySubscriptionDetailPage />}
+                />
+                <Route path="matrimony/:id" element={<MatrimonyRequestDetailPage />} />
+                <Route path="business" element={<BusinessApprovalPage />} />
+                <Route path="posts" element={<PostsModerationPage />} />
+                <Route path="job-portal" element={<JobPortalPage />} />
+                <Route path="marketplace" element={<MarketplacePage />} />
+                <Route path="helping-hand" element={<HelpingHandPage />} />
+                <Route path="master-data" element={<MasterDataPage />} />
+                <Route path="community-content" element={<CommunityContentPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+                <Route path="support" element={<SupportPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="platform" element={<PlatformManagementPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
           <ToastContainer />
         </ToastProvider>
       </AuthProvider>

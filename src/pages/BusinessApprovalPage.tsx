@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getPendingUpdates,
@@ -7,6 +7,13 @@ import {
   type PendingProfileUpdate
 } from "../api/admin";
 import { StatusBadge } from "../components/StatusBadge";
+import {
+  AdminListError,
+  AdminListToolbar,
+  AdminPagination,
+  AdminTableSkeleton
+} from "../components/admin/AdminListControls";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useToast } from "../context/ToastContext";
 
 function DataCompare({
@@ -50,15 +57,29 @@ function DataCompare({
 export function BusinessApprovalPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+  const [searchDraft, setSearchDraft] = useState("");
+  const searchQ = useDebouncedValue(searchDraft, 350);
   const [rejecting, setRejecting] = useState<PendingProfileUpdate | null>(null);
   const [rejectRemarks, setRejectRemarks] = useState("");
 
-  const { data: updates, isLoading } = useQuery({
-    queryKey: ["admin-pending-updates"],
-    queryFn: getPendingUpdates
+  useEffect(() => {
+    setPage(1);
+  }, [searchQ, limit]);
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["admin-pending-updates", "BUSINESS", page, limit, searchQ],
+    queryFn: () =>
+      getPendingUpdates({
+        section: "BUSINESS",
+        page,
+        limit,
+        q: searchQ || undefined
+      })
   });
 
-  const businessUpdates = (updates ?? []).filter((u) => u.section === "BUSINESS");
+  const businessUpdates = data?.updates ?? [];
 
   const approveMutation = useMutation({
     mutationFn: (updateId: number) => approveProfileUpdate(updateId),
@@ -83,58 +104,81 @@ export function BusinessApprovalPage() {
     onError: (err) => addToast(err instanceof Error ? err.message : "Failed to reject", "error")
   });
 
-  if (isLoading) return <p className="text-slate-600">Loading…</p>;
-
   return (
     <div>
-      <h2 className="mb-6 text-xl font-semibold text-slate-900">Business Approval</h2>
-      {businessUpdates.length === 0 ? (
+      <p className="mb-4 text-sm text-slate-500">
+        Pending business profile updates with server-side pagination.
+      </p>
+
+      <AdminListToolbar
+        search={searchDraft}
+        onSearchChange={setSearchDraft}
+        searchPlaceholder="Search owner name, email, mobile…"
+      />
+
+      {isLoading ? (
+        <AdminTableSkeleton rows={4} cols={3} />
+      ) : isError ? (
+        <AdminListError
+          message={(error as Error)?.message || "Failed to load business updates."}
+          onRetry={() => void refetch()}
+        />
+      ) : businessUpdates.length === 0 ? (
         <p className="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
           No pending Business updates.
         </p>
       ) : (
-        <div className="space-y-6">
-          {businessUpdates.map((u) => (
-            <div
-              key={u.id}
-              className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    {(u.data?.businessName as string) ?? "—"} (Owner: {u.userName})
-                  </h3>
-                  <p className="text-sm text-slate-600">{u.userEmail}</p>
-                  <span className="mt-2 inline-block">
-                    <StatusBadge status={u.status} />
-                  </span>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Submitted {new Date(u.submittedAt).toLocaleString()}
-                  </p>
+        <>
+          <div className="space-y-6">
+            {businessUpdates.map((u) => (
+              <div
+                key={u.id}
+                className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-slate-900">
+                      {(u.data?.businessName as string) ?? "—"} (Owner: {u.userName})
+                    </h3>
+                    <p className="text-sm text-slate-600">{u.userEmail}</p>
+                    <span className="mt-2 inline-block">
+                      <StatusBadge status={u.status} />
+                    </span>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Submitted {new Date(u.submittedAt).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <DataCompare current={u.currentApproved} pending={u.data} />
+                <div className="mt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => approveMutation.mutate(u.id)}
+                    disabled={approveMutation.isPending}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRejecting(u)}
+                    disabled={rejectMutation.isPending}
+                    className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                  >
+                    Reject
+                  </button>
                 </div>
               </div>
-              <DataCompare current={u.currentApproved} pending={u.data} />
-              <div className="mt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => approveMutation.mutate(u.id)}
-                  disabled={approveMutation.isPending}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRejecting(u)}
-                  disabled={rejectMutation.isPending}
-                  className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-                >
-                  Reject
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          <AdminPagination
+            page={data?.page ?? page}
+            limit={data?.limit ?? limit}
+            total={data?.total ?? 0}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
+        </>
       )}
 
       {rejecting && (

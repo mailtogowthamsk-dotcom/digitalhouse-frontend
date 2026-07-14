@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   closeAdminJob,
@@ -10,6 +10,11 @@ import {
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { ConfirmModal } from "../components/ConfirmModal";
+import {
+  AdminListError,
+  AdminPagination,
+  AdminTableSkeleton
+} from "../components/admin/AdminListControls";
 import { useToast } from "../context/ToastContext";
 
 type ConfirmState =
@@ -20,15 +25,20 @@ export function JobPortalPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [statusFilter, setStatusFilter] = useState<"open" | "closed" | "all">("open");
   const [searchDraft, setSearchDraft] = useState("");
   const [searchQ, setSearchQ] = useState("");
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [viewing, setViewing] = useState<AdminJobItem | null>(null);
 
+  useEffect(() => {
+    setPage(1);
+  }, [limit]);
+
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["admin-jobs", page, statusFilter, searchQ],
-    queryFn: () => listAdminJobs(page, 20, statusFilter, searchQ || undefined)
+    queryKey: ["admin-jobs", page, limit, statusFilter, searchQ],
+    queryFn: () => listAdminJobs(page, limit, statusFilter, searchQ || undefined)
   });
 
   const invalidate = () => {
@@ -71,7 +81,6 @@ export function JobPortalPage() {
     closeMutation.isPending || reopenMutation.isPending || deleteMutation.isPending;
 
   const counts = data?.counts;
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.limit ?? 20)));
 
   const columns = useMemo(
     () => [
@@ -167,12 +176,9 @@ export function JobPortalPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Job Portal Moderation</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Review community job listings, close spam, or remove abusive posts.
-          </p>
-        </div>
+        <p className="text-sm text-slate-600">
+          Review community job listings, close spam, or remove abusive posts.
+        </p>
         <div className="flex flex-wrap gap-3 text-sm">
           <span className="rounded-lg bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
             Open: {counts?.open ?? 0}
@@ -223,55 +229,30 @@ export function JobPortalPage() {
         </button>
       </div>
 
-      {isLoading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-          Loading jobs…
-        </div>
+      {isLoading && !data ? (
+        <AdminTableSkeleton rows={8} cols={7} />
       ) : isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
-          <p className="text-sm text-red-700">
-            {error instanceof Error ? error.message : "Failed to load jobs."}
-          </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
-          >
-            Retry
-          </button>
-        </div>
-      ) : (
-        <DataTable
-          columns={columns as any}
-          data={(data?.jobs ?? []) as any}
-          keyExtractor={(r) => (r as AdminJobItem).id}
-          emptyMessage="No job listings found."
+        <AdminListError
+          message={error instanceof Error ? error.message : "Failed to load jobs."}
+          onRetry={() => void refetch()}
         />
+      ) : (
+        <>
+          <DataTable
+            columns={columns as any}
+            data={(data?.jobs ?? []) as any}
+            keyExtractor={(r) => (r as AdminJobItem).id}
+            emptyMessage="No job listings found."
+          />
+          <AdminPagination
+            page={page}
+            limit={limit}
+            total={data?.total ?? 0}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
+        </>
       )}
-
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-        <span>
-          Page {page} of {totalPages} · {data?.total ?? 0} results
-        </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 disabled:opacity-40"
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 disabled:opacity-40"
-          >
-            Next
-          </button>
-        </div>
-      </div>
 
       {viewing ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">

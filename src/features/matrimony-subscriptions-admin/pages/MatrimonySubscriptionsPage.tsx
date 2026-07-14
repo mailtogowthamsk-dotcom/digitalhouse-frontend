@@ -12,11 +12,12 @@ import {
 } from "../api";
 import type { SubscriptionListFilters } from "../types";
 import { OverviewCards } from "../components/OverviewCards";
+import { AdminPagination } from "../../../components/admin/AdminListControls";
 import { useToast } from "../../../context/ToastContext";
 
 const defaultFilters: SubscriptionListFilters = {
   page: 1,
-  limit: 20,
+  limit: 25,
   subscriptionStatus: "any",
   paymentStatus: "any",
   plan: "any",
@@ -80,12 +81,9 @@ export function MatrimonySubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">Matrimony Subscriptions</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Revenue, subscribers, payment history, and manual grants.
-        </p>
-      </div>
+      <p className="text-sm text-slate-600">
+        Revenue, subscribers, payment history, and manual grants.
+      </p>
 
       <OverviewCards overview={overview} loading={overviewLoading} />
 
@@ -295,11 +293,15 @@ export function MatrimonySubscriptionsPage() {
               )}
             </tbody>
           </table>
-          <Pagination
+          <AdminPagination
             page={subData?.page ?? 1}
             total={subData?.total ?? 0}
-            limit={filters.limit ?? 20}
-            onPage={(p) => setFilters((f) => ({ ...f, page: p }))}
+            limit={filters.limit ?? 25}
+            onPageChange={(p) => setFilters((f) => ({ ...f, page: p }))}
+            onLimitChange={(nextLimit) =>
+              setFilters((f) => ({ ...f, limit: nextLimit, page: 1 }))
+            }
+            className="px-4 pb-3"
           />
         </div>
       ) : null}
@@ -345,11 +347,15 @@ export function MatrimonySubscriptionsPage() {
               )}
             </tbody>
           </table>
-          <Pagination
+          <AdminPagination
             page={payData?.page ?? 1}
             total={payData?.total ?? 0}
-            limit={filters.limit ?? 20}
-            onPage={(p) => setFilters((f) => ({ ...f, page: p }))}
+            limit={filters.limit ?? 25}
+            onPageChange={(p) => setFilters((f) => ({ ...f, page: p }))}
+            onLimitChange={(nextLimit) =>
+              setFilters((f) => ({ ...f, limit: nextLimit, page: 1 }))
+            }
+            className="px-4 pb-3"
           />
         </div>
       ) : null}
@@ -401,46 +407,6 @@ function formatDate(iso: string) {
   } catch {
     return iso;
   }
-}
-
-function Pagination({
-  page,
-  total,
-  limit,
-  onPage
-}: {
-  page: number;
-  total: number;
-  limit: number;
-  onPage: (p: number) => void;
-}) {
-  const pages = Math.max(1, Math.ceil(total / limit));
-  if (pages <= 1) return null;
-  return (
-    <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm">
-      <span className="text-slate-500">
-        Page {page} of {pages} ({total} rows)
-      </span>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={page <= 1}
-          onClick={() => onPage(page - 1)}
-          className="rounded border px-2 py-1 disabled:opacity-40"
-        >
-          Prev
-        </button>
-        <button
-          type="button"
-          disabled={page >= pages}
-          onClick={() => onPage(page + 1)}
-          className="rounded border px-2 py-1 disabled:opacity-40"
-        >
-          Next
-        </button>
-      </div>
-    </div>
-  );
 }
 
 function GrantModal({

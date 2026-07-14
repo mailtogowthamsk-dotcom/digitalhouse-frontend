@@ -21,7 +21,6 @@ export function DashboardPage() {
 
   return (
     <div>
-      <h2 className="mb-6 text-xl font-semibold text-slate-900">Overview</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {cards.map(({ key, label, link, color }) => (
           <Link

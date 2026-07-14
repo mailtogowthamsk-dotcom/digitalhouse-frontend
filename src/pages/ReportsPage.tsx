@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   dismissAdminReport,
@@ -14,6 +14,12 @@ import {
 } from "../api/reportsAdmin";
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
+import {
+  AdminListError,
+  AdminPagination,
+  AdminTableSkeleton
+} from "../components/admin/AdminListControls";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useToast } from "../context/ToastContext";
 
 type ConfirmAction =
@@ -27,18 +33,23 @@ export function ReportsPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>("PENDING");
   const [kindFilter, setKindFilter] = useState<ReportKind | "all">("all");
   const [searchDraft, setSearchDraft] = useState("");
-  const [searchQ, setSearchQ] = useState("");
+  const searchQ = useDebouncedValue(searchDraft.trim(), 350);
   const [confirm, setConfirm] = useState<ConfirmAction>(null);
   const [remarks, setRemarks] = useState("");
   const [viewing, setViewing] = useState<{ kind: ReportKind; id: number } | null>(null);
 
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, kindFilter, searchQ, limit]);
+
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["admin-reports", page, statusFilter, kindFilter, searchQ],
+    queryKey: ["admin-reports", page, limit, statusFilter, kindFilter, searchQ],
     queryFn: () =>
-      listAdminReports(page, 20, statusFilter, kindFilter, searchQ || undefined)
+      listAdminReports(page, limit, statusFilter, kindFilter, searchQ || undefined)
   });
 
   const detailQuery = useQuery({
@@ -79,7 +90,6 @@ export function ReportsPage() {
   });
 
   const counts = data?.counts;
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.limit ?? 20)));
   const detail = detailQuery.data?.report;
 
   const columns = useMemo(
@@ -226,13 +236,10 @@ export function ReportsPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Reports & Complaints</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Post reports and profile abuse from the app. Review, warn, suspend, or escalate to Super
-            Admin.
-          </p>
-        </div>
+        <p className="text-sm text-slate-600">
+          Post reports and profile abuse from the app. Review, warn, suspend, or escalate to Super
+          Admin.
+        </p>
         <div className="flex flex-wrap gap-2 text-sm">
           <span className="rounded-lg bg-amber-50 px-3 py-1.5 font-medium text-amber-800">
             Pending: {counts?.pending ?? 0}
@@ -253,7 +260,6 @@ export function ReportsPage() {
         <select
           value={statusFilter}
           onChange={(e) => {
-            setPage(1);
             setStatusFilter(e.target.value as ReportStatusFilter);
           }}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -267,7 +273,6 @@ export function ReportsPage() {
         <select
           value={kindFilter}
           onChange={(e) => {
-            setPage(1);
             setKindFilter(e.target.value as ReportKind | "all");
           }}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -279,25 +284,9 @@ export function ReportsPage() {
         <input
           value={searchDraft}
           onChange={(e) => setSearchDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              setPage(1);
-              setSearchQ(searchDraft.trim());
-            }
-          }}
           placeholder="Search reason, user, post…"
           className="min-w-[220px] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
         />
-        <button
-          type="button"
-          onClick={() => {
-            setPage(1);
-            setSearchQ(searchDraft.trim());
-          }}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50"
-        >
-          Search
-        </button>
         <button
           type="button"
           onClick={() => void refetch()}
@@ -307,55 +296,30 @@ export function ReportsPage() {
         </button>
       </div>
 
-      {isLoading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          Loading reports…
-        </div>
+      {isLoading && !data ? (
+        <AdminTableSkeleton rows={8} cols={6} />
       ) : isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
-          <p className="text-sm text-red-700">
-            {error instanceof Error ? error.message : "Failed to load reports."}
-          </p>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
-          >
-            Retry
-          </button>
-        </div>
-      ) : (
-        <DataTable
-          columns={columns as any}
-          data={(data?.reports ?? []) as any}
-          keyExtractor={(r) => (r as AdminReportItem).key}
-          emptyMessage="No reports found."
+        <AdminListError
+          message={error instanceof Error ? error.message : "Failed to load reports."}
+          onRetry={() => void refetch()}
         />
+      ) : (
+        <>
+          <DataTable
+            columns={columns as any}
+            data={(data?.reports ?? []) as any}
+            keyExtractor={(r) => (r as AdminReportItem).key}
+            emptyMessage="No reports found."
+          />
+          <AdminPagination
+            page={page}
+            limit={limit}
+            total={data?.total ?? 0}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
+        </>
       )}
-
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-        <span>
-          Page {page} of {totalPages} · {data?.total ?? 0} results
-        </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 disabled:opacity-40"
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 disabled:opacity-40"
-          >
-            Next
-          </button>
-        </div>
-      </div>
 
       {viewing != null ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

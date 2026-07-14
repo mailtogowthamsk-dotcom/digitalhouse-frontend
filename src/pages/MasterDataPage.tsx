@@ -9,6 +9,10 @@ import {
   type MdmItem,
   type MdmAudit
 } from "../api/masterDataAdmin";
+import {
+  AdminPagination,
+  AdminTableSkeleton
+} from "../components/admin/AdminListControls";
 import { useToast } from "../context/ToastContext";
 
 export function MasterDataPage() {
@@ -18,6 +22,7 @@ export function MasterDataPage() {
   const [items, setItems] = useState<MdmItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [q, setQ] = useState("");
   const [qDraft, setQDraft] = useState("");
   const [active, setActive] = useState<"all" | "active" | "inactive">("all");
@@ -56,7 +61,7 @@ export function MasterDataPage() {
         q: q || undefined,
         active,
         page,
-        limit: 50,
+        limit,
         sort: "sort_order"
       });
       setItems(data.items);
@@ -66,7 +71,7 @@ export function MasterDataPage() {
     } finally {
       setLoading(false);
     }
-  }, [typeCode, parentId, q, active, page, addToast]);
+  }, [typeCode, parentId, q, active, page, limit, addToast]);
 
   useEffect(() => {
     void loadTypes().catch((e) =>
@@ -82,6 +87,10 @@ export function MasterDataPage() {
     setParentId(undefined);
     setPage(1);
   }, [typeCode]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [limit]);
 
   useEffect(() => {
     const parentType = selectedType?.parent_type_code;
@@ -181,19 +190,14 @@ export function MasterDataPage() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / 50));
-
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Master Data</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Single source of truth for dropdowns across registration, profile, matrimony,
-            marketplace, and filters. Disable values to hide them from new selections without
-            breaking existing records.
-          </p>
-        </div>
+        <p className="max-w-2xl text-sm text-slate-600">
+          Single source of truth for dropdowns across registration, profile, matrimony,
+          marketplace, and filters. Disable values to hide them from new selections without
+          breaking existing records.
+        </p>
         <div className="flex gap-2">
           <button
             type="button"
@@ -288,106 +292,88 @@ export function MasterDataPage() {
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Label</th>
-              <th className="px-4 py-3">Code</th>
-              <th className="px-4 py-3">Sort</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Aliases</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading ? (
+      {loading ? (
+        <AdminTableSkeleton rows={8} cols={6} />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                  Loading…
-                </td>
+                <th className="px-4 py-3">Label</th>
+                <th className="px-4 py-3">Code</th>
+                <th className="px-4 py-3">Sort</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Aliases</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                  No values yet for {selectedType?.name ?? typeCode}.
-                  {selectedType?.parent_type_code ? (
-                    <>
-                      {" "}
-                      Choose a parent ({selectedType.parent_type_code}) filter or use{" "}
-                      <span className="font-medium">Add value</span> and pick a parent.
-                    </>
-                  ) : (
-                    <> Use Add value to create the first one.</>
-                  )}
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/80">
-                  <td className="px-4 py-3 font-medium text-slate-900">{item.label}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.code ?? "—"}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.sort_order}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        item.is_active
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {item.is_active ? "Active" : "Disabled"}
-                    </span>
-                  </td>
-                  <td className="max-w-[220px] truncate px-4 py-3 text-xs text-slate-500">
-                    {(item.aliases ?? []).join(", ") || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      className="mr-2 text-sm font-medium text-primary"
-                      onClick={() => openEdit(item)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-slate-600"
-                      onClick={() => void toggleActive(item)}
-                    >
-                      {item.is_active ? "Disable" : "Enable"}
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                    No values yet for {selectedType?.name ?? typeCode}.
+                    {selectedType?.parent_type_code ? (
+                      <>
+                        {" "}
+                        Choose a parent ({selectedType.parent_type_code}) filter or use{" "}
+                        <span className="font-medium">Add value</span> and pick a parent.
+                      </>
+                    ) : (
+                      <> Use Add value to create the first one.</>
+                    )}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
-        <span>
-          {total} total · Page {page} / {totalPages}
-        </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            className="rounded border border-slate-200 px-3 py-1 disabled:opacity-40"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Prev
-          </button>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            className="rounded border border-slate-200 px-3 py-1 disabled:opacity-40"
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </button>
+              ) : (
+                items.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/80">
+                    <td className="px-4 py-3 font-medium text-slate-900">{item.label}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.code ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.sort_order}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          item.is_active
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {item.is_active ? "Active" : "Disabled"}
+                      </span>
+                    </td>
+                    <td className="max-w-[220px] truncate px-4 py-3 text-xs text-slate-500">
+                      {(item.aliases ?? []).join(", ") || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        className="mr-2 text-sm font-medium text-primary"
+                        onClick={() => openEdit(item)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-slate-600"
+                        onClick={() => void toggleActive(item)}
+                      >
+                        {item.is_active ? "Disable" : "Enable"}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
+
+      <AdminPagination
+        page={page}
+        limit={limit}
+        total={total}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+      />
 
       {formOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
