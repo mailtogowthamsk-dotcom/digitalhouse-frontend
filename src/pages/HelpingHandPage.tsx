@@ -4,6 +4,8 @@ import {
   cancelAdminHelpRequest,
   completeAdminHelpRequest,
   deleteAdminHelpRequest,
+  expireAdminHelpRequest,
+  extendAdminHelpRequest,
   getAdminHelpRequest,
   listAdminHelpRequests,
   reopenAdminHelpRequest,
@@ -32,7 +34,7 @@ const CATEGORIES = [
 ];
 
 type ConfirmState =
-  | { type: "cancel" | "reopen" | "complete" | "delete"; item: AdminHelpItem }
+  | { type: "cancel" | "reopen" | "complete" | "expire" | "extend" | "delete"; item: AdminHelpItem }
   | null;
 
 export function HelpingHandPage() {
@@ -99,6 +101,26 @@ export function HelpingHandPage() {
     onError: (err) => addToast(err instanceof Error ? err.message : "Failed to complete", "error")
   });
 
+  const expireMutation = useMutation({
+    mutationFn: (id: number) => expireAdminHelpRequest(id),
+    onSuccess: () => {
+      invalidate();
+      setConfirm(null);
+      addToast("Request expired and removed from Highlights.", "success");
+    },
+    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to expire", "error")
+  });
+
+  const extendMutation = useMutation({
+    mutationFn: (id: number) => extendAdminHelpRequest(id),
+    onSuccess: () => {
+      invalidate();
+      setConfirm(null);
+      addToast("Request duration extended.", "success");
+    },
+    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to extend", "error")
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteAdminHelpRequest(id),
     onSuccess: () => {
@@ -114,6 +136,8 @@ export function HelpingHandPage() {
     cancelMutation.isPending ||
     reopenMutation.isPending ||
     completeMutation.isPending ||
+    expireMutation.isPending ||
+    extendMutation.isPending ||
     deleteMutation.isPending;
 
   const counts = data?.counts;
@@ -177,7 +201,9 @@ export function HelpingHandPage() {
             >
               View
             </button>
-            {r.helpStatus !== "CANCELLED" && r.helpStatus !== "COMPLETED" ? (
+            {r.helpStatus !== "CANCELLED" &&
+            r.helpStatus !== "COMPLETED" &&
+            r.helpStatus !== "EXPIRED" ? (
               <button
                 type="button"
                 onClick={() => setConfirm({ type: "cancel", item: r })}
@@ -186,22 +212,44 @@ export function HelpingHandPage() {
                 Freeze
               </button>
             ) : null}
-            {r.helpStatus === "CANCELLED" ? (
+            {r.helpStatus === "CANCELLED" || r.helpStatus === "EXPIRED" ? (
               <button
                 type="button"
                 onClick={() => setConfirm({ type: "reopen", item: r })}
                 className="text-sm font-medium text-emerald-700 hover:underline"
               >
-                Reopen
+                Restore
               </button>
             ) : null}
-            {r.helpStatus !== "COMPLETED" && r.helpStatus !== "CANCELLED" ? (
+            {r.helpStatus !== "COMPLETED" &&
+            r.helpStatus !== "CANCELLED" &&
+            r.helpStatus !== "EXPIRED" ? (
               <button
                 type="button"
                 onClick={() => setConfirm({ type: "complete", item: r })}
                 className="text-sm font-medium text-emerald-700 hover:underline"
               >
-                Complete
+                Resolve
+              </button>
+            ) : null}
+            {r.helpStatus !== "COMPLETED" &&
+            r.helpStatus !== "CANCELLED" &&
+            r.helpStatus !== "EXPIRED" ? (
+              <button
+                type="button"
+                onClick={() => setConfirm({ type: "expire", item: r })}
+                className="text-sm font-medium text-slate-600 hover:underline"
+              >
+                Expire
+              </button>
+            ) : null}
+            {r.helpStatus !== "COMPLETED" && r.helpStatus !== "CANCELLED" ? (
+              <button
+                type="button"
+                onClick={() => setConfirm({ type: "extend", item: r })}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Extend
               </button>
             ) : null}
             <button
@@ -237,6 +285,9 @@ export function HelpingHandPage() {
           <span className="rounded-lg bg-slate-100 px-3 py-1.5 font-medium text-slate-700">
             Cancelled: {counts?.cancelled ?? 0}
           </span>
+          <span className="rounded-lg bg-slate-100 px-3 py-1.5 font-medium text-slate-500">
+            Expired: {counts?.expired ?? 0}
+          </span>
           <span className="rounded-lg bg-slate-50 px-3 py-1.5 font-medium text-slate-600">
             All: {counts?.all ?? 0}
           </span>
@@ -255,8 +306,9 @@ export function HelpingHandPage() {
           <option value="all">All statuses</option>
           <option value="open">Open / Pending</option>
           <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
+          <option value="completed">Completed / Resolved</option>
           <option value="cancelled">Cancelled / Frozen</option>
+          <option value="expired">Expired</option>
         </select>
         <select
           value={category}
@@ -424,32 +476,48 @@ export function HelpingHandPage() {
           confirm?.type === "cancel"
             ? "Freeze request?"
             : confirm?.type === "reopen"
-              ? "Reopen request?"
+              ? "Restore request?"
               : confirm?.type === "complete"
-                ? "Mark completed?"
-                : "Delete request?"
+                ? "Mark resolved?"
+                : confirm?.type === "expire"
+                  ? "Expire request now?"
+                  : confirm?.type === "extend"
+                    ? "Extend duration?"
+                    : "Delete request?"
         }
         message={
           confirm?.type === "cancel"
             ? `"${confirm.item.title}" will be cancelled and hidden from the public Helping Hands feed.`
             : confirm?.type === "reopen"
-              ? `"${confirm.item.title}" will be set back to Open.`
+              ? `"${confirm.item.title}" will be restored to Open with a fresh active window.`
               : confirm?.type === "complete"
-                ? `"${confirm.item.title}" will be marked completed. Helpers will be notified.`
-                : confirm
-                  ? `"${confirm.item.title}" and related offers/appreciations will be permanently deleted.`
-                  : ""
+                ? `"${confirm.item.title}" will be marked resolved and removed from Highlights.`
+                : confirm?.type === "expire"
+                  ? `"${confirm.item.title}" will expire immediately and leave Highlights.`
+                  : confirm?.type === "extend"
+                    ? `"${confirm.item.title}" active duration will be extended by one category window.`
+                    : confirm
+                      ? `"${confirm.item.title}" and related offers/appreciations will be permanently deleted.`
+                      : ""
         }
         confirmLabel={
           confirm?.type === "cancel"
             ? "Freeze"
             : confirm?.type === "reopen"
-              ? "Reopen"
+              ? "Restore"
               : confirm?.type === "complete"
-                ? "Complete"
-                : "Delete"
+                ? "Resolve"
+                : confirm?.type === "expire"
+                  ? "Expire"
+                  : confirm?.type === "extend"
+                    ? "Extend"
+                    : "Delete"
         }
-        variant={confirm?.type === "delete" || confirm?.type === "cancel" ? "danger" : "default"}
+        variant={
+          confirm?.type === "delete" || confirm?.type === "cancel" || confirm?.type === "expire"
+            ? "danger"
+            : "default"
+        }
         confirmDisabled={mutationPending}
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
@@ -457,6 +525,8 @@ export function HelpingHandPage() {
           if (confirm.type === "cancel") cancelMutation.mutate(confirm.item.id);
           else if (confirm.type === "reopen") reopenMutation.mutate(confirm.item.id);
           else if (confirm.type === "complete") completeMutation.mutate(confirm.item.id);
+          else if (confirm.type === "expire") expireMutation.mutate(confirm.item.id);
+          else if (confirm.type === "extend") extendMutation.mutate(confirm.item.id);
           else deleteMutation.mutate(confirm.item.id);
         }}
       />

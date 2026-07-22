@@ -37,7 +37,13 @@ export type AdminHelpDetail = AdminHelpItem & {
   }>;
 };
 
-export type HelpStatusFilter = "open" | "in_progress" | "completed" | "cancelled" | "all";
+export type HelpStatusFilter =
+  | "open"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "expired"
+  | "all";
 
 export type AdminHelpListResponse = {
   ok: boolean;
@@ -50,6 +56,7 @@ export type AdminHelpListResponse = {
     in_progress: number;
     completed: number;
     cancelled: number;
+    expired?: number;
     all: number;
   };
 };
@@ -93,6 +100,18 @@ export async function completeAdminHelpRequest(
   id: number
 ): Promise<{ request: AdminHelpItem }> {
   return fetchApi(`/api/admin/helping-hands/${id}/complete`, { method: "POST", body: "{}" });
+}
+
+export async function expireAdminHelpRequest(
+  id: number
+): Promise<{ request: AdminHelpItem }> {
+  return fetchApi(`/api/admin/helping-hands/${id}/expire`, { method: "POST", body: "{}" });
+}
+
+export async function extendAdminHelpRequest(
+  id: number
+): Promise<{ request: AdminHelpItem }> {
+  return fetchApi(`/api/admin/helping-hands/${id}/extend`, { method: "POST", body: "{}" });
 }
 
 export async function deleteAdminHelpRequest(id: number): Promise<{ message: string }> {

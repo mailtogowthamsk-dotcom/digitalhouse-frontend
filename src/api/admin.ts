@@ -2,10 +2,8 @@
  * Admin API – login, dashboard stats, users, pending updates, approve/reject.
  */
 
+import { apiUrl } from "./apiBase";
 import { fetchApi, setToken } from "./client";
-
-/** Relative only — never https://infosensetechnologies.com/... (CORS with www admin site). */
-const ADMIN_LOGIN_URL = "/digitalhouse/backend/api/admin/login";
 
 export type AdminLoginResponse = {
   token: string;
@@ -13,7 +11,7 @@ export type AdminLoginResponse = {
 };
 
 export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
-  const res = await fetch(ADMIN_LOGIN_URL, {
+  const res = await fetch(apiUrl("/api/admin/login"), {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },

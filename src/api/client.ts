@@ -2,10 +2,10 @@
  * Admin API base URL and auth token.
  */
 
-import { apiUrl } from "./apiBase";
+import { API_ROOT, apiUrl } from "./apiBase";
 
 export function getApiBase(): string {
-  return "/digitalhouse/backend";
+  return API_ROOT;
 }
 
 export function getToken(): string | null {
