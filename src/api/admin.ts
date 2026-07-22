@@ -145,6 +145,38 @@ export async function rejectUser(userId: number, remarks: string): Promise<void>
   });
 }
 
+export async function requestRegistrationChanges(
+  userId: number,
+  remarks: string,
+  requestedFields: Array<"mobile" | "profilePhoto">
+): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}/request-changes`, {
+    method: "POST",
+    body: JSON.stringify({ remarks, requestedFields })
+  });
+}
+
+export type RegistrationReview = {
+  status: string;
+  gate: string;
+  registrationAdminRemarks: string | null;
+  registrationRequestedFields: string[];
+  mobile: string | null;
+  pendingMobile: string | null;
+  profilePhoto: string | null;
+  pendingProfilePhoto: string | null;
+  registrationResubmittedAt: string | null;
+  registrationReviewedAt: string | null;
+};
+
+export async function getUserById(id: number): Promise<{
+  user: any;
+  verificationHistory: any[];
+  registrationReview?: RegistrationReview;
+}> {
+  return fetchApi(`/api/admin/users/${id}`);
+}
+
 export type PendingProfileUpdate = {
   id: number;
   userId: number;
@@ -204,8 +236,4 @@ export async function rejectProfileUpdate(updateId: number, remarks: string): Pr
     method: "POST",
     body: JSON.stringify({ updateId, remarks })
   });
-}
-
-export async function getUserById(id: number): Promise<any> {
-  return fetchApi(`/api/admin/users/${id}`);
 }

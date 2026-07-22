@@ -19,6 +19,7 @@ import { PostsModerationPage } from "./pages/PostsModerationPage";
 import { JobPortalPage } from "./pages/JobPortalPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
 import { HelpingHandPage } from "./pages/HelpingHandPage";
+import { ProminentPeoplePage } from "./pages/ProminentPeoplePage";
 import { MasterDataPage } from "./pages/MasterDataPage";
 import { CommunityContentPage } from "./pages/CommunityContentPage";
 import { ReportsPage } from "./pages/ReportsPage";
@@ -69,6 +70,7 @@ export default function App() {
                 <Route path="job-portal" element={<JobPortalPage />} />
                 <Route path="marketplace" element={<MarketplacePage />} />
                 <Route path="helping-hand" element={<HelpingHandPage />} />
+                <Route path="prominent-people" element={<ProminentPeoplePage />} />
                 <Route path="master-data" element={<MasterDataPage />} />
                 <Route path="community-content" element={<CommunityContentPage />} />
                 <Route path="reports" element={<ReportsPage />} />

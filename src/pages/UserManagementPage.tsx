@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUsers, approveUser, rejectUser, type UserListItem } from "../api/admin";
+import { getUsers, approveUser, rejectUser, requestRegistrationChanges, getUserById, type UserListItem, type RegistrationReview } from "../api/admin";
 import { reactivateAdminUser, suspendAdminUser } from "../api/reportsAdmin";
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
@@ -30,10 +30,32 @@ export function UserManagementPage() {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [viewingUser, setViewingUser] = useState<UserListItem | null>(null);
+  const [registrationReview, setRegistrationReview] = useState<RegistrationReview | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
-    type: "approve" | "reject" | "suspend" | "reactivate";
+    type: "approve" | "reject" | "suspend" | "reactivate" | "requestChanges";
     user: UserListItem;
   } | null>(null);
+
+  const isReviewable = (status: string) =>
+    status === "PENDING" || status === "PENDING_REVIEW" || status === "CHANGES_REQUESTED";
+
+  const openUserDetail = async (user: UserListItem) => {
+    setViewingUser(user);
+    setRegistrationReview(null);
+    try {
+      const detail = await getUserById(user.id);
+      if (detail?.registrationReview) setRegistrationReview(detail.registrationReview);
+      if (detail?.user) {
+        setViewingUser({
+          ...user,
+          ...detail.user,
+          mobile: detail.user.mobile ?? user.mobile
+        });
+      }
+    } catch {
+      /* keep list row */
+    }
+  };
 
   useEffect(() => {
     const status = searchParams.get("status");
@@ -92,6 +114,26 @@ export function UserManagementPage() {
       addToast("User rejected.", "success");
     },
     onError: (err) => addToast(err instanceof Error ? err.message : "Failed to reject", "error")
+  });
+
+  const requestChangesMutation = useMutation({
+    mutationFn: ({
+      userId,
+      remarks,
+      requestedFields
+    }: {
+      userId: number;
+      remarks: string;
+      requestedFields: Array<"mobile" | "profilePhoto">;
+    }) => requestRegistrationChanges(userId, remarks, requestedFields),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      setConfirmAction(null);
+      addToast("Changes requested.", "success");
+    },
+    onError: (err) =>
+      addToast(err instanceof Error ? err.message : "Failed to request changes", "error")
   });
 
   const suspendMutation = useMutation({
@@ -167,12 +209,12 @@ export function UserManagementPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setViewingUser(r)}
+              onClick={() => void openUserDetail(r)}
               className="text-sm font-medium text-primary hover:underline"
             >
               View
             </button>
-            {r.status === "PENDING" && (
+            {isReviewable(r.status) && (
               <>
                 <button
                   type="button"
@@ -180,6 +222,13 @@ export function UserManagementPage() {
                   className="text-sm font-medium text-emerald-600 hover:underline"
                 >
                   Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction({ type: "requestChanges", user: r })}
+                  className="text-sm font-medium text-amber-600 hover:underline"
+                >
+                  Request changes
                 </button>
                 <button
                   type="button"
@@ -233,6 +282,7 @@ export function UserManagementPage() {
         >
           <option value="">All statuses</option>
           <option value="PENDING">Pending</option>
+          <option value="CHANGES_REQUESTED">Changes requested</option>
           <option value="APPROVED">Active</option>
           <option value="SUSPENDED">Suspended</option>
           <option value="REJECTED">Rejected</option>
@@ -326,6 +376,34 @@ export function UserManagementPage() {
           onCancel={() => setConfirmAction(null)}
         />
       )}
+      {confirmAction?.type === "requestChanges" && (
+        <ConfirmModal
+          open
+          title="Request Registration Changes"
+          message="Ask the user to update mobile and/or profile photo. Provide remarks shown in the app."
+          confirmLabel="Continue"
+          onConfirm={() => {
+            const wantMobile = window.confirm("Request mobile number update?");
+            const wantPhoto = window.confirm("Request profile photo update?");
+            const fields: Array<"mobile" | "profilePhoto"> = [];
+            if (wantMobile) fields.push("mobile");
+            if (wantPhoto) fields.push("profilePhoto");
+            if (fields.length === 0) {
+              addToast("Select at least one field.", "error");
+              return;
+            }
+            const remarks = window.prompt("Remarks for the user (required):");
+            if (remarks?.trim()) {
+              requestChangesMutation.mutate({
+                userId: confirmAction.user.id,
+                remarks: remarks.trim(),
+                requestedFields: fields
+              });
+            }
+          }}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
       {confirmAction?.type === "suspend" && (
         <ConfirmModal
           open
@@ -352,7 +430,7 @@ export function UserManagementPage() {
 
       {viewingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
             <h3 className="mb-4 text-lg font-semibold text-slate-900">User Profile</h3>
             <dl className="space-y-2 text-sm">
               <div>
@@ -374,9 +452,17 @@ export function UserManagementPage() {
                 <dd className="text-slate-900">{viewingUser.email}</dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-500">Mobile</dt>
-                <dd className="text-slate-900">{viewingUser.mobile ?? "—"}</dd>
+                <dt className="font-medium text-slate-500">Mobile (current)</dt>
+                <dd className="text-slate-900">
+                  {registrationReview?.mobile ?? viewingUser.mobile ?? "—"}
+                </dd>
               </div>
+              {registrationReview?.pendingMobile ? (
+                <div>
+                  <dt className="font-medium text-amber-700">Mobile (updated / pending)</dt>
+                  <dd className="font-medium text-slate-900">{registrationReview.pendingMobile}</dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="font-medium text-slate-500">Community</dt>
                 <dd className="text-slate-900">{viewingUser.community ?? "—"}</dd>
@@ -392,10 +478,81 @@ export function UserManagementPage() {
                 </dd>
               </div>
             </dl>
-            <div className="mt-6 flex justify-end">
+
+            {(registrationReview?.profilePhoto || registrationReview?.pendingProfilePhoto) && (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase text-slate-500">
+                    Original photo
+                  </p>
+                  {registrationReview.profilePhoto ? (
+                    <img
+                      src={registrationReview.profilePhoto}
+                      alt="Original"
+                      className="h-28 w-28 rounded-full object-cover"
+                    />
+                  ) : (
+                    <p className="text-sm text-slate-400">None</p>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase text-amber-700">
+                    Updated photo
+                  </p>
+                  {registrationReview.pendingProfilePhoto ? (
+                    <img
+                      src={registrationReview.pendingProfilePhoto}
+                      alt="Pending"
+                      className="h-28 w-28 rounded-full object-cover ring-2 ring-amber-400"
+                    />
+                  ) : (
+                    <p className="text-sm text-slate-400">No replacement</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              {isReviewable(viewingUser.status) ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmAction({ type: "approve", user: viewingUser });
+                      setViewingUser(null);
+                    }}
+                    className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmAction({ type: "requestChanges", user: viewingUser });
+                      setViewingUser(null);
+                    }}
+                    className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-white"
+                  >
+                    Request changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmAction({ type: "reject", user: viewingUser });
+                      setViewingUser(null);
+                    }}
+                    className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white"
+                  >
+                    Reject
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
-                onClick={() => setViewingUser(null)}
+                onClick={() => {
+                  setViewingUser(null);
+                  setRegistrationReview(null);
+                }}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Close

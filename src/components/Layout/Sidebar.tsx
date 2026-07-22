@@ -18,6 +18,7 @@ const navItems: Array<{ to: string; label: string; icon: string; module: string 
   { to: "/job-portal", label: "Job Portal", icon: "💼", module: "jobs" },
   { to: "/marketplace", label: "Marketplace", icon: "🛒", module: "marketplace" },
   { to: "/helping-hand", label: "Helping Hand", icon: "🤝", module: "helping_hands" },
+  { to: "/prominent-people", label: "Prominent People", icon: "⭐", module: "prominent_people" },
   { to: "/master-data", label: "Master Data", icon: "🗂️", module: "master_data" },
   { to: "/community-content", label: "Community Content", icon: "📜", module: "community_content" },
   { to: "/reports", label: "Reports & Complaints", icon: "⚠️", module: "reports" },
