@@ -89,7 +89,19 @@ export function MatrimonyReportsListPage() {
             ) : items.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                  No reports found.
+                  No reports found for this status.
+                  {status === "PENDING" ? (
+                    <button
+                      type="button"
+                      className="ml-2 text-primary underline"
+                      onClick={() => {
+                        setStatus("any");
+                        setPage(1);
+                      }}
+                    >
+                      Show all reports
+                    </button>
+                  ) : null}
                 </td>
               </tr>
             ) : (

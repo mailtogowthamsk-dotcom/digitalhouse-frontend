@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMatrimonyStats,
@@ -8,33 +8,110 @@ import {
   approveMatrimonyRequest
 } from "../api";
 import type { MatrimonyListFilters, MatrimonyRequestListItem } from "../types";
-import { SummaryCards } from "../components/SummaryCards";
+import { SummaryCards, type MatrimonyQueueKey } from "../components/SummaryCards";
 import { WorkflowBadge } from "../components/WorkflowBadge";
 import { TableSkeleton } from "../components/TableSkeleton";
 import { AdminPagination } from "../../../components/admin/AdminListControls";
 import { useToast } from "../../../context/ToastContext";
 import { useAuth } from "../../../context/AuthContext";
 
-const defaultFilters: MatrimonyListFilters = {
+const QUEUE_TABS: { key: MatrimonyQueueKey; label: string }[] = [
+  { key: "all", label: "All profiles" },
+  { key: "pending", label: "Needs review" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
+  { key: "under_review", label: "Under review" },
+  { key: "drafts", label: "Drafts" },
+  { key: "new_today", label: "New today" }
+];
+
+function filtersForQueue(queue: MatrimonyQueueKey): Partial<MatrimonyListFilters> {
+  const today = new Date().toISOString().slice(0, 10);
+  switch (queue) {
+    case "pending":
+      return {
+        pendingReviewOnly: true,
+        workflowStatus: undefined,
+        includeDrafts: false,
+        submittedFrom: undefined
+      };
+    case "approved":
+      return {
+        pendingReviewOnly: false,
+        workflowStatus: "APPROVED",
+        includeDrafts: false,
+        submittedFrom: undefined
+      };
+    case "rejected":
+      return {
+        pendingReviewOnly: false,
+        workflowStatus: "REJECTED",
+        includeDrafts: false,
+        submittedFrom: undefined
+      };
+    case "under_review":
+      return {
+        pendingReviewOnly: false,
+        workflowStatus: "UNDER_REVIEW",
+        includeDrafts: false,
+        submittedFrom: undefined
+      };
+    case "drafts":
+      return {
+        pendingReviewOnly: false,
+        workflowStatus: "DRAFT",
+        includeDrafts: true,
+        submittedFrom: undefined
+      };
+    case "new_today":
+      return {
+        pendingReviewOnly: false,
+        workflowStatus: undefined,
+        includeDrafts: true,
+        submittedFrom: today
+      };
+    case "all":
+    default:
+      return {
+        pendingReviewOnly: false,
+        workflowStatus: undefined,
+        includeDrafts: false,
+        submittedFrom: undefined
+      };
+  }
+}
+
+function queueFromParams(params: URLSearchParams): MatrimonyQueueKey {
+  const q = params.get("queue");
+  if (QUEUE_TABS.some((t) => t.key === q)) return q as MatrimonyQueueKey;
+  return "all";
+}
+
+const baseFilters: MatrimonyListFilters = {
   page: 1,
   limit: 25,
   sortDir: "desc",
   verificationStatus: "any",
   includeDrafts: false,
-  pendingReviewOnly: true
+  pendingReviewOnly: false
 };
 
 export function MatrimonyRequestsListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { adminEmail } = useAuth();
-  const [filters, setFilters] = useState<MatrimonyListFilters>(defaultFilters);
+
+  const activeQueue = queueFromParams(searchParams);
+  const [filters, setFilters] = useState<MatrimonyListFilters>(() => ({
+    ...baseFilters,
+    ...filtersForQueue(activeQueue)
+  }));
   const [searchDraft, setSearchDraft] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("OTHER");
-
   useEffect(() => {
     const t = window.setTimeout(() => {
       setFilters((f) => {
@@ -45,6 +122,26 @@ export function MatrimonyRequestsListPage() {
     }, 350);
     return () => window.clearTimeout(t);
   }, [searchDraft]);
+
+  const applyQueue = (queue: MatrimonyQueueKey, resetPage = true) => {
+    setSearchParams(queue === "all" ? {} : { queue }, { replace: true });
+    setFilters((f) => ({
+      ...f,
+      ...filtersForQueue(queue),
+      page: resetPage ? 1 : f.page,
+      search: f.search,
+      gender: f.gender,
+      district: f.district,
+      kulam: f.kulam,
+      ageMin: f.ageMin,
+      ageMax: f.ageMax,
+      completionMin: f.completionMin,
+      verificationStatus: f.verificationStatus ?? "any",
+      sortDir: f.sortDir ?? "desc",
+      limit: f.limit ?? 25
+    }));
+    setSelected(new Set());
+  };
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["matrimony-admin-stats"],
@@ -99,6 +196,25 @@ export function MatrimonyRequestsListPage() {
     else setSelected(new Set(items.map((r) => r.id)));
   };
 
+  const queueHint = useMemo(() => {
+    switch (activeQueue) {
+      case "pending":
+        return "Showing profiles waiting for admin review (submitted / under review / resubmitted).";
+      case "approved":
+        return "Showing approved matrimony profiles.";
+      case "rejected":
+        return "Showing rejected profiles.";
+      case "drafts":
+        return "Showing drafts that have not been submitted for review.";
+      case "new_today":
+        return "Showing profiles submitted or updated today.";
+      case "under_review":
+        return "Showing profiles assigned and marked under review.";
+      default:
+        return "Showing all matrimony profiles except drafts. Use tabs or summary cards to filter.";
+    }
+  }, [activeQueue]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -107,7 +223,38 @@ export function MatrimonyRequestsListPage() {
         </p>
       </div>
 
-      <SummaryCards stats={stats} loading={statsLoading} />
+      <SummaryCards
+        stats={stats}
+        loading={statsLoading}
+        activeQueue={activeQueue}
+        onSelectQueue={(q) => applyQueue(q)}
+        onOpenReports={() => navigate("/matrimony-reports")}
+      />
+
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+        {QUEUE_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => applyQueue(tab.key)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+              activeQueue === tab.key
+                ? "bg-primary text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            {tab.label}
+            {tab.key === "pending" && stats?.pendingRequests != null ? (
+              <span className="ml-1.5 opacity-80">({stats.pendingRequests})</span>
+            ) : null}
+            {tab.key === "approved" && stats?.approvedProfiles != null ? (
+              <span className="ml-1.5 opacity-80">({stats.approvedProfiles})</span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      <p className="text-xs text-slate-500">{queueHint}</p>
 
       <div className="sticky top-16 z-30 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 lg:grid-cols-6">
@@ -120,18 +267,36 @@ export function MatrimonyRequestsListPage() {
           />
           <select
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            value={filters.workflowStatus ?? ""}
-            onChange={(e) =>
+            value={filters.workflowStatus ?? (filters.pendingReviewOnly ? "__pending__" : "")}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "__pending__") {
+                applyQueue("pending");
+                return;
+              }
+              if (!value) {
+                applyQueue("all");
+                return;
+              }
+              if (value === "APPROVED") return applyQueue("approved");
+              if (value === "REJECTED") return applyQueue("rejected");
+              if (value === "UNDER_REVIEW") return applyQueue("under_review");
+              if (value === "DRAFT") return applyQueue("drafts");
+              setSearchParams({}, { replace: true });
               setFilters((f) => ({
                 ...f,
                 page: 1,
-                workflowStatus: e.target.value || undefined
-              }))
-            }
+                pendingReviewOnly: false,
+                includeDrafts: value === "DRAFT" || value === "CHANGES_REQUESTED",
+                workflowStatus: value
+              }));
+            }}
           >
             <option value="">All statuses</option>
+            <option value="__pending__">Needs review (queue)</option>
             <option value="SUBMITTED">Submitted</option>
             <option value="UNDER_REVIEW">Under review</option>
+            <option value="RESUBMITTED">Resubmitted</option>
             <option value="DRAFT">Draft</option>
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
@@ -237,7 +402,7 @@ export function MatrimonyRequestsListPage() {
         <label className="mt-3 flex items-center gap-2 text-sm text-slate-600">
           <input
             type="checkbox"
-            checked={filters.includeDrafts ?? true}
+            checked={Boolean(filters.includeDrafts)}
             onChange={(e) =>
               setFilters((f) => ({ ...f, page: 1, includeDrafts: e.target.checked }))
             }
@@ -287,12 +452,23 @@ export function MatrimonyRequestsListPage() {
         <TableSkeleton />
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
-          <p className="text-slate-600">No matrimony requests match your filters.</p>
-          {!filters.includeDrafts && (
-            <p className="mt-2 text-sm text-slate-500">
-              Enable &quot;Include drafts&quot; to see profiles not yet submitted for review.
-            </p>
-          )}
+          <p className="text-slate-600">No matrimony profiles match this view.</p>
+          <p className="mt-2 text-sm text-slate-500">
+            Try <button type="button" className="text-primary underline" onClick={() => applyQueue("all")}>All profiles</button>
+            {stats && stats.approvedProfiles > 0 ? (
+              <>
+                {" "}
+                or{" "}
+                <button type="button" className="text-primary underline" onClick={() => applyQueue("approved")}>
+                  Approved ({stats.approvedProfiles})
+                </button>
+              </>
+            ) : null}
+            {" · "}
+            <button type="button" className="text-primary underline" onClick={() => applyQueue("drafts")}>
+              Drafts
+            </button>
+          </p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

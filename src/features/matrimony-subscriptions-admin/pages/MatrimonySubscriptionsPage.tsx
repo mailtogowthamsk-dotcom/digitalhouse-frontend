@@ -85,7 +85,25 @@ export function MatrimonySubscriptionsPage() {
         Revenue, subscribers, payment history, and manual grants.
       </p>
 
-      <OverviewCards overview={overview} loading={overviewLoading} />
+      <OverviewCards
+        overview={overview}
+        loading={overviewLoading}
+        activeFilter={
+          filters.subscriptionStatus === "ACTIVE" || filters.subscriptionStatus === "EXPIRED"
+            ? filters.subscriptionStatus
+            : filters.subscriptionStatus === "any" || !filters.subscriptionStatus
+              ? "any"
+              : undefined
+        }
+        onSelectFilter={(filter) => {
+          setTab("subscriptions");
+          setFilters((f) => ({
+            ...f,
+            page: 1,
+            subscriptionStatus: filter
+          }));
+        }}
+      />
 
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
         {(["subscriptions", "payments", "reports"] as const).map((t) => (
