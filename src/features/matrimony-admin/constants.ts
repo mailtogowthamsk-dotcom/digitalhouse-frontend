@@ -44,6 +44,7 @@ export const MATRIMONY_FIELD_LABELS: Record<string, string> = {
   familyType: "Family type",
   familyStatus: "Family status",
   motherName: "Mother name",
+  fatherName: "Father name",
   fatherOccupation: "Father occupation",
   numberOfSiblings: "Siblings",
   brothersCount: "Brothers",

@@ -322,6 +322,7 @@ export function MatrimonyRequestDetailPage() {
               "familyType",
               "familyStatus",
               "motherName",
+              "fatherName",
               "fatherOccupation",
               "numberOfSiblings",
               "brothersCount",
