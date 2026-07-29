@@ -21,11 +21,21 @@ const TITLES: Record<string, string> = {
   "/notifications": "Notifications",
   "/platform": "Platform Management",
   "/system-scheduler": "System Scheduler",
-  "/settings": "Settings & Roles"
+  "/settings": "Settings & Roles",
+  "/settings/legal": "Legal Documents"
 };
 
 function titleForPath(path: string): string {
   if (TITLES[path]) return TITLES[path];
+  if (path.startsWith("/settings/legal/") && path.endsWith("/history")) {
+    return "Legal Document History";
+  }
+  if (path.startsWith("/settings/legal/") && path.endsWith("/compare")) {
+    return "Compare Legal Versions";
+  }
+  if (path.startsWith("/settings/legal/") && path !== "/settings/legal") {
+    return "Edit Legal Document";
+  }
   if (path.startsWith("/system-scheduler/") && path !== "/system-scheduler") {
     return "Scheduler Job Detail";
   }

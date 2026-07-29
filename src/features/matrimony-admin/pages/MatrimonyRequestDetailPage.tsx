@@ -195,6 +195,19 @@ export function MatrimonyRequestDetailPage() {
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-2xl font-bold text-slate-900">{String(u.fullName)}</h2>
             <WorkflowBadge status={data.workflowStatus} />
+            {data.lifecycleStatus ? (
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  data.lifecycleStatus === "ACTIVE"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : data.lifecycleStatus === "PAUSED"
+                      ? "bg-amber-100 text-amber-900"
+                      : "bg-rose-100 text-rose-900"
+                }`}
+              >
+                Lifecycle: {data.lifecycleStatus}
+              </span>
+            ) : null}
             {(data.applicationCount ?? 1) > 1 ? (
               <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
                 {data.applicationCount} applications
@@ -204,6 +217,23 @@ export function MatrimonyRequestDetailPage() {
           <p className="mt-1 text-sm text-slate-600">
             User #{data.userId} · Application #{data.id} · Version {data.applicationVersion ?? 1}
           </p>
+          {data.presence ? (
+            <p className="mt-1 text-sm text-slate-600">
+              {data.presence.online ? (
+                <span className="font-medium text-emerald-700">Online now</span>
+              ) : (
+                <>
+                  Last seen{" "}
+                  {data.presence.lastSeenAt
+                    ? new Date(data.presence.lastSeenAt).toLocaleString()
+                    : data.presence.label || "unknown"}
+                </>
+              )}
+              {data.presence.lastSeenVisibility
+                ? ` · Visibility: ${data.presence.lastSeenVisibility}`
+                : null}
+            </p>
+          ) : null}
           <p className="mt-2 text-sm text-slate-500">
             Submitted {new Date(data.submittedAt).toLocaleString()} · Updated{" "}
             {new Date(data.updatedAt).toLocaleString()}

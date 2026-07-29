@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createAdminUser,
@@ -169,7 +170,7 @@ export function SettingsPage() {
         ) : null}
       </div>
 
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setTab("admins")}
@@ -188,6 +189,12 @@ export function SettingsPage() {
         >
           Permission matrix
         </button>
+        <Link
+          to="/settings/legal"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Legal documents
+        </Link>
         <button
           type="button"
           onClick={() => void refetch()}

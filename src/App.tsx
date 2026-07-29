@@ -31,6 +31,10 @@ import { ReportsPage } from "./pages/ReportsPage";
 import { SupportPage } from "./pages/SupportPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { LegalDocumentsListPage } from "./features/legal-admin/LegalDocumentsListPage";
+import { LegalDocumentEditPage } from "./features/legal-admin/LegalDocumentEditPage";
+import { LegalDocumentHistoryPage } from "./features/legal-admin/LegalDocumentHistoryPage";
+import { LegalDocumentComparePage } from "./features/legal-admin/LegalDocumentComparePage";
 import { PlatformManagementPage } from "./pages/PlatformManagementPage";
 import { SystemSchedulerPage, SystemSchedulerDetailPage } from "./pages/SystemSchedulerPage";
 import { AdminErrorBoundary } from "./components/AdminErrorBoundary";
@@ -116,6 +120,22 @@ export default function App() {
                 <Route
                   path="system-scheduler"
                   element={<M module="system_scheduler"><SystemSchedulerPage /></M>}
+                />
+                <Route
+                  path="settings/legal/:documentKey/compare"
+                  element={<M module="settings"><LegalDocumentComparePage /></M>}
+                />
+                <Route
+                  path="settings/legal/:documentKey/history"
+                  element={<M module="settings"><LegalDocumentHistoryPage /></M>}
+                />
+                <Route
+                  path="settings/legal/:documentKey"
+                  element={<M module="settings"><LegalDocumentEditPage /></M>}
+                />
+                <Route
+                  path="settings/legal"
+                  element={<M module="settings"><LegalDocumentsListPage /></M>}
                 />
                 <Route path="settings" element={<M module="settings"><SettingsPage /></M>} />
               </Route>

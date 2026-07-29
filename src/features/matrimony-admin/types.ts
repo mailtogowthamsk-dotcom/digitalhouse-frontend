@@ -100,11 +100,23 @@ export type MatrimonyAuditEntry = {
   createdAt: string;
 };
 
+export type MatrimonyLifecycleStatus = "ACTIVE" | "PAUSED" | "CLOSED" | null;
+
+export type MatrimonyPresenceInfo = {
+  online: boolean;
+  lastSeenAt: string | null;
+  label: string;
+  lastSeenVisibility?: string;
+};
+
 export type MatrimonyRequestDetail = {
   id: number;
   userId: number;
   workflowStatus: MatrimonyWorkflowStatus;
   rowStatus: string;
+  /** Approved-profile lifecycle (ACTIVE / PAUSED / CLOSED); null if not approved yet. */
+  lifecycleStatus?: MatrimonyLifecycleStatus;
+  presence?: MatrimonyPresenceInfo;
   submittedAt: string;
   updatedAt: string;
   reviewedAt: string | null;

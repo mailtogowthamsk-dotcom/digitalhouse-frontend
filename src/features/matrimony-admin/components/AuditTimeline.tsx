@@ -9,7 +9,13 @@ const ACTION_LABELS: Record<string, string> = {
   SUSPENDED: "Profile suspended",
   ASSIGNED_REVIEWER: "Reviewer assigned",
   VERIFICATION_UPDATED: "Verification updated",
-  NOTE_ADDED: "Note added"
+  NOTE_ADDED: "Note added",
+  PHOTO_STATUS_UPDATED: "Candidate photo status updated",
+  PROFILE_WITHDRAWN: "Profile withdrawn (legacy)",
+  PROFILE_PAUSED: "Profile paused by user",
+  PROFILE_RESUMED: "Profile resumed by user",
+  PROFILE_CLOSED: "Profile closed by user",
+  PROFILE_REACTIVATED: "Profile reactivated by user"
 };
 
 export function AuditTimeline({ entries }: { entries: MatrimonyAuditEntry[] }) {
