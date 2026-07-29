@@ -28,6 +28,7 @@ export type MatrimonyRequestListItem = {
   gender: string | null;
   age: number | null;
   district: string;
+  community?: string;
   kulam: string;
   submittedAt: string;
   updatedAt: string;
@@ -35,9 +36,15 @@ export type MatrimonyRequestListItem = {
   workflowStatus: MatrimonyWorkflowStatus;
   rowStatus: string;
   assignedReviewer: string | null;
+  reviewedBy?: string | null;
   verificationComplete: boolean;
   profilePhotoUrl: string | null;
   submittedForReview: boolean;
+  adminDecision?: string;
+  applicationVersion?: number;
+  applicationCount?: number;
+  isCurrent?: boolean;
+  subscriptionPlan?: string | null;
 };
 
 export type MatrimonyListResponse = {
@@ -57,15 +64,19 @@ export type MatrimonyListFilters = {
   gender?: string;
   district?: string;
   kulam?: string;
+  community?: string;
   ageMin?: number;
   ageMax?: number;
   submittedFrom?: string;
   submittedTo?: string;
+  period?: "today" | "week" | "month";
   completionMin?: number;
   verificationStatus?: "complete" | "incomplete" | "any";
   search?: string;
   includeDrafts?: boolean;
   pendingReviewOnly?: boolean;
+  subscriptionPlan?: string;
+  versionMin?: number;
 };
 
 export type VerificationState = Record<
@@ -134,4 +145,45 @@ export type MatrimonyRequestDetail = {
     accountOwnerPhoto: string | null;
     matrimonyCandidatePhoto: string | null;
   };
+  applicationVersion?: number;
+  applicationCount?: number;
+  isCurrent?: boolean;
+  pendingSinceDays?: number | null;
+  applicationHistory?: MatrimonyApplicationVersion[];
+  timeline?: MatrimonyTimelineEvent[];
+};
+
+export type MatrimonyApplicationVersion = {
+  id: number;
+  applicationVersion: number;
+  isCurrent: boolean;
+  workflowStatus: MatrimonyWorkflowStatus;
+  rowStatus: string;
+  submittedAt: string;
+  updatedAt: string;
+  reviewedAt: string | null;
+  adminRemarks: string | null;
+  assignedReviewer: string | null;
+  reviewedBy: string | null;
+  rejectionReason: string | null;
+  rejectionComment: string | null;
+  changeRequest?: {
+    comment: string;
+    sections: string[];
+    requestedAt: string;
+    requestedBy: string;
+  } | null;
+  resubmissionCount: number;
+  submittedForReview: boolean;
+  adminDecision: string;
+  notes: MatrimonyNote[];
+};
+
+export type MatrimonyTimelineEvent = {
+  at: string;
+  type: string;
+  label: string;
+  actor: string | null;
+  applicationVersion: number | null;
+  meta?: string | null;
 };

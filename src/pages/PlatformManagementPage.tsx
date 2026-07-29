@@ -8,7 +8,6 @@ import {
   getPlatformDashboard,
   listAds,
   listAnnouncements,
-  listAudits,
   listBanners,
   listFeatures,
   listMenu,
@@ -29,18 +28,34 @@ import {
   type VersionStatus
 } from "../api/platformAdmin";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
+import { BusinessSettingsPanel } from "../features/platform-admin/BusinessSettingsPanel";
+import { SubscriptionPricingPanel } from "../features/platform-admin/SubscriptionPricingPanel";
+import {
+  MatrimonyConfigPanel,
+  PlatformHealthPanel,
+  StoragePanel
+} from "../features/platform-admin/PlatformOpsPanels";
+import { AuditLogsPanel } from "../features/platform-admin/AuditLogsPanel";
 
 type TabId =
   | "dashboard"
-  | "versions"
-  | "maintenance"
+  | "business"
+  | "marketplace"
+  | "jobs"
+  | "matrimony"
+  | "subscription-pricing"
+  | "features"
+  | "menu"
+  | "banners"
   | "notifications"
   | "emergency"
   | "popups"
   | "announcements"
-  | "banners"
-  | "features"
-  | "menu"
+  | "versions"
+  | "maintenance"
+  | "storage"
+  | "health"
   | "subscriptions"
   | "ads"
   | "analytics"
@@ -48,16 +63,23 @@ type TabId =
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "dashboard", label: "Dashboard" },
-  { id: "versions", label: "Versions" },
-  { id: "maintenance", label: "Maintenance" },
-  { id: "notifications", label: "Global Notifications" },
+  { id: "business", label: "Business Settings" },
+  { id: "marketplace", label: "Marketplace" },
+  { id: "jobs", label: "Jobs" },
+  { id: "matrimony", label: "Matrimony" },
+  { id: "subscription-pricing", label: "Subscription Pricing" },
+  { id: "features", label: "Feature Toggles" },
+  { id: "menu", label: "Menu" },
+  { id: "banners", label: "Banners" },
+  { id: "notifications", label: "Notifications" },
   { id: "emergency", label: "Emergency" },
   { id: "popups", label: "Alert Popups" },
   { id: "announcements", label: "Announcements" },
-  { id: "banners", label: "Banners" },
-  { id: "features", label: "Feature Toggles" },
-  { id: "menu", label: "Menu" },
-  { id: "subscriptions", label: "Subscriptions" },
+  { id: "versions", label: "Version Management" },
+  { id: "maintenance", label: "Maintenance" },
+  { id: "storage", label: "Storage" },
+  { id: "health", label: "Platform Health" },
+  { id: "subscriptions", label: "Subscriptions Ops" },
   { id: "ads", label: "Advertisements" },
   { id: "analytics", label: "Ad Analytics" },
   { id: "audits", label: "Audit Logs" }
@@ -109,15 +131,20 @@ const btnGhost =
 
 export function PlatformManagementPage() {
   const { addToast } = useToast();
+  const { hasAction } = useAuth();
+  const canManage = hasAction("platform.manage");
+  const canMaintenance = hasAction("platform.maintenance");
+  const canVersions = hasAction("platform.versions");
+  const canFeatures = hasAction("platform.features");
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabId>("dashboard");
-  const [auditPage, setAuditPage] = useState(1);
-  const [auditModule, setAuditModule] = useState("");
 
   const dashQ = useQuery({
     queryKey: ["platform-dashboard"],
     queryFn: getPlatformDashboard,
-    enabled: tab === "dashboard"
+    enabled: tab === "dashboard" || tab === "health",
+    staleTime: 20_000,
+    refetchOnWindowFocus: false
   });
   const versionsQ = useQuery({
     queryKey: ["platform-versions"],
@@ -169,11 +196,6 @@ export function PlatformManagementPage() {
     queryKey: ["platform-ad-analytics"],
     queryFn: getAdAnalytics,
     enabled: tab === "analytics"
-  });
-  const auditsQ = useQuery({
-    queryKey: ["platform-audits", auditPage, auditModule],
-    queryFn: () => listAudits(auditPage, 40, auditModule || undefined),
-    enabled: tab === "audits"
   });
 
   const invalidate = (...keys: string[]) => {
@@ -461,9 +483,16 @@ export function PlatformManagementPage() {
     <div>
       <div className="mb-6">
         <p className="max-w-3xl text-sm text-slate-600">
-          Operational control center for versions, maintenance, communications, feature visibility,
-          subscriptions, and future monetization — without redeploying the apps.
+          Business control center for configurable settings, marketplace &amp; jobs rules, subscription
+          pricing, feature visibility, communications, versions, and maintenance — without redeploying
+          the apps.
         </p>
+        {!(canManage || canMaintenance || canVersions || canFeatures) ? (
+          <p className="mt-2 text-sm text-amber-800">
+            View-only access. Platform write actions require platform.manage / maintenance / versions /
+            features permissions.
+          </p>
+        ) : null}
       </div>
 
       <div className="mb-6 flex flex-wrap gap-1.5 border-b border-slate-200 pb-3">
@@ -492,6 +521,21 @@ export function PlatformManagementPage() {
             <p className="text-sm text-red-600">{(dashQ.error as Error).message}</p>
           ) : (
             <>
+              <div className="mb-4 flex flex-wrap gap-2">
+                {(
+                  [
+                    ["business", "Business Settings"],
+                    ["marketplace", "Marketplace"],
+                    ["jobs", "Jobs"],
+                    ["subscription-pricing", "Subscription Pricing"],
+                    ["health", "Platform Health"]
+                  ] as Array<[TabId, string]>
+                ).map(([id, label]) => (
+                  <button key={id} type="button" className={btnGhost} onClick={() => setTab(id)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   {
@@ -580,6 +624,37 @@ export function PlatformManagementPage() {
           )}
         </div>
       )}
+
+      {tab === "business" && (
+        <BusinessSettingsPanel
+          title="Business Settings"
+          description="Central registry of configurable business values. Database overrides win; otherwise constant defaults apply."
+        />
+      )}
+
+      {tab === "marketplace" && (
+        <BusinessSettingsPanel
+          moduleFilter="marketplace"
+          title="Marketplace configuration"
+          description="Live listing limits, photos, expiry, duplicate window, report auto-hide, and featured price. Changes apply without redeploy."
+        />
+      )}
+
+      {tab === "jobs" && (
+        <BusinessSettingsPanel
+          moduleFilter="jobs"
+          title="Jobs configuration"
+          description="Active job limits, application caps, default expiry, featured price, and enabled employment types. 0 means unlimited / no auto-deadline."
+        />
+      )}
+
+      {tab === "matrimony" && <MatrimonyConfigPanel />}
+
+      {tab === "subscription-pricing" && <SubscriptionPricingPanel />}
+
+      {tab === "storage" && <StoragePanel />}
+
+      {tab === "health" && <PlatformHealthPanel dashboard={dashQ.data} />}
 
       {/* ═══════ VERSIONS ═══════ */}
       {tab === "versions" && (
@@ -672,7 +747,7 @@ export function PlatformManagementPage() {
                 <button
                   type="button"
                   className={btnPrimary}
-                  disabled={saveVerMut.isPending || !verForm.versionName}
+                  disabled={saveVerMut.isPending || !verForm.versionName || !canVersions}
                   onClick={() => saveVerMut.mutate()}
                 >
                   Save
@@ -769,6 +844,7 @@ export function PlatformManagementPage() {
               key={maint.updatedBy + String(maint.enabled) + maint.title}
               initial={maint}
               saving={saveMaintMut.isPending}
+              readOnly={!canMaintenance}
               onSave={(patch) => saveMaintMut.mutate(patch)}
             />
           )}
@@ -1228,7 +1304,7 @@ export function PlatformManagementPage() {
                   className={`relative h-7 w-12 rounded-full transition-colors ${
                     f.enabled ? "bg-emerald-500" : "bg-slate-300"
                   }`}
-                  disabled={featureMut.isPending}
+                  disabled={featureMut.isPending || !canFeatures}
                   onClick={() => featureMut.mutate({ code: f.code, enabled: !f.enabled })}
                 >
                   <span
@@ -1282,23 +1358,30 @@ export function PlatformManagementPage() {
       {tab === "subscriptions" && (
         <div className="space-y-4">
           <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <h3 className="text-sm font-semibold text-slate-800">Subscription administration</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Subscription operations</h3>
             <p className="mt-2 text-sm text-slate-600">
-              Manual assign, gift, lifetime, premium / gold / platinum plans, extend, cancel,
-              revoke, renewal queues, and full payment history (including Razorpay IDs) are managed
-              in the existing Subscriptions & Revenue module — kept as the single source of truth
-              so Platform Management does not duplicate billing workflows.
+              Manual assign, gift, extend, cancel, renewals, and payment history stay in Subscriptions
+              &amp; Revenue. Plan price / benefits / GST are edited under{" "}
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => setTab("subscription-pricing")}
+              >
+                Subscription Pricing
+              </button>
+              .
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link to="/matrimony-subscriptions" className={btnPrimary}>
                 Open Subscriptions & Revenue
               </Link>
-              <Link
-                to="/matrimony-subscriptions"
+              <button
+                type="button"
                 className={btnGhost}
+                onClick={() => setTab("subscription-pricing")}
               >
-                History · Renewals · Export
-              </Link>
+                Edit plan pricing
+              </button>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -1483,69 +1566,7 @@ export function PlatformManagementPage() {
       )}
 
       {/* ═══════ AUDITS ═══════ */}
-      {tab === "audits" && (
-        <div>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <input
-              className={`${inputClass} max-w-xs`}
-              placeholder="Filter by module (e.g. version)"
-              value={auditModule}
-              onChange={(e) => {
-                setAuditModule(e.target.value);
-                setAuditPage(1);
-              }}
-            />
-          </div>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Time</th>
-                  <th className="px-4 py-3">Admin</th>
-                  <th className="px-4 py-3">Action</th>
-                  <th className="px-4 py-3">Module</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(auditsQ.data?.items ?? []).map((a) => (
-                  <tr key={a.id} className="border-b border-slate-100">
-                    <td className="px-4 py-2 whitespace-nowrap text-xs text-slate-500">
-                      {new Date(a.createdAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2">{a.adminEmail ?? "—"}</td>
-                    <td className="px-4 py-2 font-medium">{a.action}</td>
-                    <td className="px-4 py-2">{a.module}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button"
-              className={btnGhost}
-              disabled={auditPage <= 1}
-              onClick={() => setAuditPage((p) => p - 1)}
-            >
-              Prev
-            </button>
-            <span className="text-xs text-slate-500">
-              Page {auditsQ.data?.page ?? auditPage} · {auditsQ.data?.total ?? 0} total
-            </span>
-            <button
-              type="button"
-              className={btnGhost}
-              disabled={
-                (auditsQ.data?.page ?? 1) * (auditsQ.data?.limit ?? 40) >=
-                (auditsQ.data?.total ?? 0)
-              }
-              onClick={() => setAuditPage((p) => p + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      {tab === "audits" && <AuditLogsPanel />}
     </div>
   );
 }
@@ -1553,6 +1574,7 @@ export function PlatformManagementPage() {
 function MaintenanceEditor({
   initial,
   saving,
+  readOnly = false,
   onSave
 }: {
   initial: {
@@ -1564,6 +1586,7 @@ function MaintenanceEditor({
     scheduledStartAt: string | null;
   };
   saving: boolean;
+  readOnly?: boolean;
   onSave: (patch: {
     enabled?: boolean;
     title?: string;
@@ -1635,7 +1658,7 @@ function MaintenanceEditor({
         <button
           type="button"
           className={btnPrimary}
-          disabled={saving}
+          disabled={saving || readOnly}
           onClick={() =>
             onSave({
               title: form.title,
@@ -1651,7 +1674,7 @@ function MaintenanceEditor({
         <button
           type="button"
           className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          disabled={saving || initial.enabled}
+          disabled={saving || initial.enabled || readOnly}
           onClick={() => onSave({ enabled: true, title: form.title })}
         >
           Enable now
@@ -1659,7 +1682,7 @@ function MaintenanceEditor({
         <button
           type="button"
           className={btnGhost}
-          disabled={saving || !initial.enabled}
+          disabled={saving || !initial.enabled || readOnly}
           onClick={() => onSave({ enabled: false })}
         >
           Disable

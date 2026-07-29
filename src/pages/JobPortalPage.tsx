@@ -1,170 +1,161 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   closeAdminJob,
   deleteAdminJob,
+  getJobsOverview,
+  hideAdminJob,
   listAdminJobs,
   reopenAdminJob,
+  restoreAdminJob,
+  softDeleteAdminJob,
   type AdminJobItem
 } from "../api/jobsAdmin";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
-import { ConfirmModal } from "../components/ConfirmModal";
-import {
-  AdminListError,
-  AdminPagination,
-  AdminTableSkeleton
-} from "../components/admin/AdminListControls";
+import { AdminListError, AdminPagination, AdminTableSkeleton } from "../components/admin/AdminListControls";
 import { useToast } from "../context/ToastContext";
 
-type ConfirmState =
-  | { type: "close" | "reopen" | "delete"; job: AdminJobItem }
-  | null;
+type ActionType = "close" | "reopen" | "hide" | "restore" | "soft-delete" | "hard-delete";
+
+const actionLabels: Record<ActionType, string> = {
+  close: "Close job?",
+  reopen: "Reopen job?",
+  hide: "Hide job?",
+  restore: "Restore job?",
+  "soft-delete": "Soft delete job?",
+  "hard-delete": "Permanently delete job?"
+};
 
 export function JobPortalPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
-  const [statusFilter, setStatusFilter] = useState<"open" | "closed" | "all">("open");
+  const [status, setStatus] = useState<"active" | "closed" | "hidden" | "deleted" | "expired" | "all">("active");
   const [searchDraft, setSearchDraft] = useState("");
   const [searchQ, setSearchQ] = useState("");
-  const [confirm, setConfirm] = useState<ConfirmState>(null);
-  const [viewing, setViewing] = useState<AdminJobItem | null>(null);
+  const [category, setCategory] = useState("");
+  const [company, setCompany] = useState("");
+  const [location, setLocation] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [confirm, setConfirm] = useState<{ type: ActionType; job: AdminJobItem } | null>(null);
 
-  useEffect(() => {
-    setPage(1);
-  }, [limit]);
+  const overview = useQuery({
+    queryKey: ["jobs-overview"],
+    queryFn: getJobsOverview
+  });
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["admin-jobs", page, limit, statusFilter, searchQ],
-    queryFn: () => listAdminJobs(page, limit, statusFilter, searchQ || undefined)
+  const jobsQuery = useQuery({
+    queryKey: ["admin-jobs-v2", page, limit, status, searchQ, category, company, location, sortBy, sortDir],
+    queryFn: () =>
+      listAdminJobs(page, limit, status, searchQ || undefined, {
+        category: category || undefined,
+        company: company || undefined,
+        location: location || undefined,
+        sortBy,
+        sortDir
+      })
   });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["admin-jobs"] });
-    queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-jobs-v2"] });
+    queryClient.invalidateQueries({ queryKey: ["jobs-overview"] });
   };
 
-  const closeMutation = useMutation({
-    mutationFn: (id: number) => closeAdminJob(id),
-    onSuccess: () => {
+  const actionMutation = useMutation({
+    mutationFn: async ({ type, id }: { type: ActionType; id: number }) => {
+      if (type === "close") return closeAdminJob(id);
+      if (type === "reopen") return reopenAdminJob(id);
+      if (type === "hide") return hideAdminJob(id);
+      if (type === "restore") return restoreAdminJob(id);
+      if (type === "soft-delete") return softDeleteAdminJob(id);
+      return deleteAdminJob(id);
+    },
+    onSuccess: (_, variables) => {
       invalidate();
       setConfirm(null);
-      addToast("Job closed.", "success");
+      addToast(`${variables.type.replace("-", " ")} completed.`, "success");
     },
-    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to close", "error")
+    onError: (err) => addToast(err instanceof Error ? err.message : "Action failed", "error")
   });
-
-  const reopenMutation = useMutation({
-    mutationFn: (id: number) => reopenAdminJob(id),
-    onSuccess: () => {
-      invalidate();
-      setConfirm(null);
-      addToast("Job reopened.", "success");
-    },
-    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to reopen", "error")
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteAdminJob(id),
-    onSuccess: () => {
-      invalidate();
-      setConfirm(null);
-      setViewing(null);
-      addToast("Job deleted.", "success");
-    },
-    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to delete", "error")
-  });
-
-  const mutationPending =
-    closeMutation.isPending || reopenMutation.isPending || deleteMutation.isPending;
-
-  const counts = data?.counts;
 
   const columns = useMemo(
     () => [
-      { key: "id", label: "ID" },
+      { key: "id", label: "Job ID", sortable: true },
       {
         key: "title",
-        label: "Title",
-        render: (r: AdminJobItem) => (
-          <div>
-            <div className="font-medium text-slate-900">{r.title}</div>
-            {r.jobCompany ? <div className="text-xs text-slate-500">{r.jobCompany}</div> : null}
+        label: "Job",
+        sortable: true,
+        render: (row: AdminJobItem) => (
+          <div className="min-w-[220px]">
+            <div className="font-medium text-slate-900">{row.title}</div>
+            <div className="text-xs text-slate-500">{row.jobCompany ?? "No company"}</div>
           </div>
         )
       },
-      {
-        key: "location",
-        label: "Location",
-        render: (r: AdminJobItem) => r.jobLocation ?? "—"
-      },
-      {
-        key: "type",
-        label: "Type",
-        render: (r: AdminJobItem) => r.jobEmploymentType?.replace(/_/g, " ") ?? "—"
-      },
+      { key: "jobCategory", label: "Category", render: (row: AdminJobItem) => row.jobCategory ?? "—" },
       {
         key: "author",
-        label: "Posted by",
-        render: (r: AdminJobItem) => (
-          <div>
-            <div>{r.author.fullName}</div>
-            <div className="text-xs text-slate-500">{r.author.email}</div>
+        label: "Employer",
+        render: (row: AdminJobItem) => (
+          <div className="min-w-[180px]">
+            <div>{row.author.fullName}</div>
+            <div className="text-xs text-slate-500">{row.author.mobile ?? row.author.email}</div>
           </div>
         )
       },
+      { key: "jobEmploymentType", label: "Employment", render: (row: AdminJobItem) => row.jobEmploymentType?.replace(/_/g, " ") ?? "—" },
+      { key: "jobLocation", label: "Location", render: (row: AdminJobItem) => row.jobLocation ?? "—" },
+      { key: "applicationCount", label: "Applications", sortable: true, render: (row: AdminJobItem) => row.applicationCount },
+      { key: "viewCount", label: "Views", sortable: true, render: (row: AdminJobItem) => row.viewCount },
       {
-        key: "interests",
-        label: "Interests",
-        render: (r: AdminJobItem) => r.interestCount
-      },
-      {
-        key: "status",
+        key: "currentStatus",
         label: "Status",
-        render: (r: AdminJobItem) => <StatusBadge status={r.jobStatus} />
+        render: (row: AdminJobItem) => <StatusBadge status={row.currentStatus} />
       },
-      {
-        key: "createdAt",
-        label: "Posted",
-        render: (r: AdminJobItem) => new Date(r.createdAt).toLocaleDateString()
-      },
+      { key: "createdAt", label: "Created", sortable: true, render: (row: AdminJobItem) => new Date(row.createdAt).toLocaleDateString() },
+      { key: "jobApplicationDeadline", label: "Expiry", render: (row: AdminJobItem) => row.jobApplicationDeadline ? new Date(row.jobApplicationDeadline).toLocaleDateString() : "—" },
       {
         key: "actions",
         label: "Actions",
-        render: (r: AdminJobItem) => (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setViewing(r)}
-              className="text-sm font-medium text-primary hover:underline"
-            >
+        render: (row: AdminJobItem) => (
+          <div className="flex min-w-[220px] flex-wrap gap-2">
+            <Link to={`/job-portal/${row.id}`} className="text-sm font-medium text-primary hover:underline">
               View
-            </button>
-            {r.jobStatus !== "CLOSED" ? (
-              <button
-                type="button"
-                onClick={() => setConfirm({ type: "close", job: r })}
-                className="text-sm font-medium text-amber-700 hover:underline"
-              >
-                Close
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirm({ type: "reopen", job: r })}
-                className="text-sm font-medium text-emerald-700 hover:underline"
-              >
+            </Link>
+            <Link to={`/job-portal/${row.id}?edit=1`} className="text-sm font-medium text-slate-700 hover:underline">
+              Edit
+            </Link>
+            <Link to={`/job-portal/applications?jobId=${row.id}`} className="text-sm font-medium text-slate-700 hover:underline">
+              Applications
+            </Link>
+            {row.jobStatus === "CLOSED" ? (
+              <button type="button" onClick={() => setConfirm({ type: "reopen", job: row })} className="text-sm font-medium text-emerald-700 hover:underline">
                 Reopen
               </button>
+            ) : (
+              <button type="button" onClick={() => setConfirm({ type: "close", job: row })} className="text-sm font-medium text-amber-700 hover:underline">
+                Close
+              </button>
             )}
-            <button
-              type="button"
-              onClick={() => setConfirm({ type: "delete", job: r })}
-              className="text-sm font-medium text-red-600 hover:underline"
-            >
-              Delete
+            {row.currentStatus === "HIDDEN" || row.currentStatus === "SOFT_DELETED" ? (
+              <button type="button" onClick={() => setConfirm({ type: "restore", job: row })} className="text-sm font-medium text-emerald-700 hover:underline">
+                Restore
+              </button>
+            ) : (
+              <button type="button" onClick={() => setConfirm({ type: "hide", job: row })} className="text-sm font-medium text-slate-700 hover:underline">
+                Hide
+              </button>
+            )}
+            <button type="button" onClick={() => setConfirm({ type: "soft-delete", job: row })} className="text-sm font-medium text-red-600 hover:underline">
+              Soft Delete
+            </button>
+            <button type="button" onClick={() => setConfirm({ type: "hard-delete", job: row })} className="text-sm font-medium text-red-700 hover:underline">
+              Permanent Delete
             </button>
           </div>
         )
@@ -173,183 +164,158 @@ export function JobPortalPage() {
     []
   );
 
+  const cards = overview.data?.cards;
+
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <p className="text-sm text-slate-600">
-          Review community job listings, close spam, or remove abusive posts.
-        </p>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <span className="rounded-lg bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
-            Open: {counts?.open ?? 0}
-          </span>
-          <span className="rounded-lg bg-slate-100 px-3 py-1.5 font-medium text-slate-700">
-            Closed: {counts?.closed ?? 0}
-          </span>
-          <span className="rounded-lg bg-blue-50 px-3 py-1.5 font-medium text-blue-800">
-            All: {counts?.all ?? 0}
-          </span>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">Jobs Dashboard</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Recruitment operations built on top of the existing jobs publishing flow.
+            </p>
+          </div>
+          <Link to="/job-portal/applications" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white">
+            Open Applications
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            ["Total Jobs", cards?.totalJobs ?? 0],
+            ["Active Jobs", cards?.activeJobs ?? 0],
+            ["Closed Jobs", cards?.closedJobs ?? 0],
+            ["Hidden Jobs", cards?.hiddenJobs ?? 0],
+            ["Deleted Jobs", cards?.deletedJobs ?? 0],
+            ["Expired Jobs", cards?.expiredJobs ?? 0],
+            ["Today's Jobs", cards?.todaysJobs ?? 0],
+            ["Applications", cards?.applications ?? 0],
+            ["Open Positions", cards?.openPositions ?? 0]
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm text-slate-500">{label}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{value}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+          <SummaryList
+            title="Recent Jobs"
+            items={(overview.data?.recentJobs ?? []).map((item) => ({
+              primary: item.title,
+              secondary: `${item.company ?? "No company"} • ${item.status}`
+            }))}
+          />
+          <SummaryList
+            title="Top Companies"
+            items={(overview.data?.topCompanies ?? []).map((item) => ({
+              primary: item.name,
+              secondary: `${item.count} jobs`
+            }))}
+          />
+          <SummaryList
+            title="Top Categories"
+            items={(overview.data?.topCategories ?? []).map((item) => ({
+              primary: item.name,
+              secondary: `${item.count} jobs`
+            }))}
+          />
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setPage(1);
-            setStatusFilter(e.target.value as "open" | "closed" | "all");
-          }}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-        >
-          <option value="open">Open</option>
-          <option value="closed">Closed</option>
-          <option value="all">All</option>
-        </select>
-        <input
-          value={searchDraft}
-          onChange={(e) => setSearchDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              setPage(1);
-              setSearchQ(searchDraft.trim());
-            }
-          }}
-          placeholder="Search title, company, location…"
-          className="min-w-[240px] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-        />
-        <button
-          type="button"
-          onClick={() => {
-            setPage(1);
-            setSearchQ(searchDraft.trim());
-          }}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
-        >
-          Search
-        </button>
+      <div className="sticky top-16 z-20 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="grid gap-3 lg:grid-cols-6">
+          <input value={searchDraft} onChange={(e) => setSearchDraft(e.target.value)} placeholder="Search by ID, title, employer, applicant..." className="rounded-lg border border-slate-300 px-3 py-2 text-sm lg:col-span-2" />
+          <select value={status} onChange={(e) => { setStatus(e.target.value as any); setPage(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="active">Active</option>
+            <option value="closed">Closed</option>
+            <option value="hidden">Hidden</option>
+            <option value="deleted">Deleted</option>
+            <option value="expired">Expired</option>
+            <option value="all">All</option>
+          </select>
+          <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="createdAt">Newest</option>
+            <option value="updatedAt">Recently Updated</option>
+            <option value="applications">Applications</option>
+            <option value="views">Views</option>
+            <option value="company">Company</option>
+            <option value="title">Title</option>
+            <option value="deadline">Deadline</option>
+          </select>
+          <select value={sortDir} onChange={(e) => setSortDir(e.target.value as any)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+          <button type="button" onClick={() => { setPage(1); setSearchQ(searchDraft.trim()); }} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white">
+            Apply Filters
+          </button>
+          <button type="button" onClick={() => { setSearchDraft(""); setSearchQ(""); setCategory(""); setCompany(""); setLocation(""); setStatus("active"); setSortBy("createdAt"); setSortDir("desc"); setPage(1); }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+            Reset
+          </button>
+        </div>
       </div>
 
-      {isLoading && !data ? (
-        <AdminTableSkeleton rows={8} cols={7} />
-      ) : isError ? (
-        <AdminListError
-          message={error instanceof Error ? error.message : "Failed to load jobs."}
-          onRetry={() => void refetch()}
-        />
+      {jobsQuery.isLoading && !jobsQuery.data ? (
+        <AdminTableSkeleton rows={10} cols={10} />
+      ) : jobsQuery.isError ? (
+        <AdminListError message={jobsQuery.error instanceof Error ? jobsQuery.error.message : "Failed to load jobs."} onRetry={() => void jobsQuery.refetch()} />
       ) : (
-        <>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <DataTable
             columns={columns as any}
-            data={(data?.jobs ?? []) as any}
-            keyExtractor={(r) => (r as AdminJobItem).id}
-            emptyMessage="No job listings found."
+            data={(jobsQuery.data?.jobs ?? []) as any}
+            keyExtractor={(row) => (row as AdminJobItem).id}
+            emptyMessage="No jobs found for the current filters."
           />
-          <AdminPagination
-            page={page}
-            limit={limit}
-            total={data?.total ?? 0}
-            onPageChange={setPage}
-            onLimitChange={setLimit}
-          />
-        </>
-      )}
-
-      {viewing ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">{viewing.title}</h3>
-                <p className="text-sm text-slate-500">{viewing.jobCompany ?? "No company"}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewing(null)}
-                className="text-slate-500 hover:text-slate-800"
-              >
-                Close
-              </button>
-            </div>
-            <dl className="space-y-2 text-sm">
-              <div>
-                <dt className="font-medium text-slate-700">Status</dt>
-                <dd>
-                  <StatusBadge status={viewing.jobStatus} />
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Location</dt>
-                <dd className="text-slate-600">{viewing.jobLocation ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Employment</dt>
-                <dd className="text-slate-600">
-                  {viewing.jobEmploymentType?.replace(/_/g, " ") ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Salary</dt>
-                <dd className="text-slate-600">
-                  {viewing.jobSalaryMin != null || viewing.jobSalaryMax != null
-                    ? `₹${viewing.jobSalaryMin?.toLocaleString("en-IN") ?? "—"} – ₹${
-                        viewing.jobSalaryMax?.toLocaleString("en-IN") ?? "—"
-                      }`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Poster</dt>
-                <dd className="text-slate-600">
-                  {viewing.author.fullName} · {viewing.author.email}
-                  {viewing.author.mobile ? ` · ${viewing.author.mobile}` : ""}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Interests</dt>
-                <dd className="text-slate-600">{viewing.interestCount}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Description</dt>
-                <dd className="whitespace-pre-wrap text-slate-600">
-                  {viewing.description || "—"}
-                </dd>
-              </div>
-            </dl>
-          </div>
+          <AdminPagination page={page} limit={limit} total={jobsQuery.data?.total ?? 0} onPageChange={setPage} onLimitChange={setLimit} />
         </div>
-      ) : null}
+      )}
 
       <ConfirmModal
         open={Boolean(confirm)}
-        title={
-          confirm?.type === "delete"
-            ? "Delete job listing?"
-            : confirm?.type === "close"
-              ? "Close job listing?"
-              : "Reopen job listing?"
-        }
-        message={
-          confirm?.type === "delete"
-            ? `Permanently delete “${confirm.job.title}”? This cannot be undone.`
-            : confirm?.type === "close"
-              ? `Close “${confirm?.job.title}”? The poster will be notified.`
-              : `Reopen “${confirm?.job.title}”?`
-        }
-        confirmLabel={
-          confirm?.type === "delete" ? "Delete" : confirm?.type === "close" ? "Close job" : "Reopen"
-        }
-        variant={confirm?.type === "delete" || confirm?.type === "close" ? "danger" : "default"}
-        confirmDisabled={mutationPending}
-        onCancel={() => {
-          if (!mutationPending) setConfirm(null);
-        }}
+        title={confirm ? actionLabels[confirm.type] : "Confirm action"}
+        message={confirm ? `${confirm.type.replace("-", " ")} “${confirm.job.title}”?` : ""}
+        confirmLabel={confirm?.type === "hard-delete" ? "Delete permanently" : "Confirm"}
+        variant={confirm?.type === "reopen" || confirm?.type === "restore" ? "default" : "danger"}
+        confirmDisabled={actionMutation.isPending}
+        onCancel={() => !actionMutation.isPending && setConfirm(null)}
         onConfirm={() => {
-          if (!confirm || mutationPending) return;
-          if (confirm.type === "close") closeMutation.mutate(confirm.job.id);
-          else if (confirm.type === "reopen") reopenMutation.mutate(confirm.job.id);
-          else deleteMutation.mutate(confirm.job.id);
+          if (!confirm || actionMutation.isPending) return;
+          actionMutation.mutate({ type: confirm.type, id: confirm.job.id });
         }}
       />
+    </div>
+  );
+}
+
+function SummaryList({
+  title,
+  items
+}: {
+  title: string;
+  items: Array<{ primary: string; secondary: string }>;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <div className="mt-3 space-y-2">
+        {items.length === 0 ? (
+          <p className="text-sm text-slate-500">No data yet.</p>
+        ) : (
+          items.map((item, index) => (
+            <div key={`${item.primary}-${index}`} className="rounded-lg bg-white px-3 py-2">
+              <div className="text-sm font-medium text-slate-900">{item.primary}</div>
+              <div className="text-xs text-slate-500">{item.secondary}</div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

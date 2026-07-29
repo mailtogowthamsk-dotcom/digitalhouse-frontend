@@ -25,6 +25,7 @@ const navItems: Array<{ to: string; label: string; icon: string; module: string 
   { to: "/support", label: "Help & Support", icon: "🆘", module: "support" },
   { to: "/notifications", label: "Notifications", icon: "🔔", module: "notifications" },
   { to: "/platform", label: "Platform Management", icon: "🎛️", module: "platform" },
+  { to: "/system-scheduler", label: "System Scheduler", icon: "⏱️", module: "system_scheduler" },
   { to: "/settings", label: "Settings & Roles", icon: "⚙️", module: "settings" }
 ];
 
@@ -35,14 +36,13 @@ const ROLE_BADGE: Record<string, string> = {
 };
 
 export function Sidebar() {
-  const { logout, adminRole, allowedModules, adminEmail } = useAuth();
+  const { logout, adminRole, hasModule, adminEmail, permissionsReady } = useAuth();
   const navigate = useNavigate();
 
   const visibleItems = useMemo(() => {
-    if (!allowedModules.length) return navItems;
-    const set = new Set(allowedModules);
-    return navItems.filter((item) => set.has(item.module));
-  }, [allowedModules]);
+    if (!permissionsReady) return [];
+    return navItems.filter((item) => hasModule(item.module));
+  }, [hasModule, permissionsReady]);
 
   const handleLogout = () => {
     logout();

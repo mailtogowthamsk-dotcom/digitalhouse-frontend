@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approveAdminMarketplace,
   deleteAdminMarketplace,
   dismissReportsAdminMarketplace,
+  getMarketplaceOverview,
   hideAdminMarketplace,
   listAdminMarketplace,
   rejectAdminMarketplace,
   requestChangesAdminMarketplace,
   setFeaturedAdminMarketplace,
+  softDeleteAdminMarketplace,
+  restoreSoftDeletedAdminMarketplace,
   unhideAdminMarketplace,
   type AdminMarketplaceItem,
+  type MarketplaceOverviewResponse,
   type MarketplaceStatusFilter
 } from "../api/marketplaceAdmin";
 import { DataTable } from "../components/DataTable";
@@ -25,7 +30,7 @@ import { useToast } from "../context/ToastContext";
 
 type ConfirmState =
   | {
-      type: "approve" | "delete" | "unhide" | "dismissReports" | "feature" | "unfeature";
+      type: "approve" | "delete" | "unhide" | "dismissReports" | "feature" | "unfeature" | "softDelete" | "restore";
       listing: AdminMarketplaceItem;
     }
   | { type: "reject"; listing: AdminMarketplaceItem; reason: string }
@@ -66,20 +71,48 @@ export function MarketplacePage() {
   const [statusFilter, setStatusFilter] = useState<MarketplaceStatusFilter>("pending");
   const [searchDraft, setSearchDraft] = useState("");
   const [searchQ, setSearchQ] = useState("");
+  const [category, setCategory] = useState("");
+  const [district, setDistrict] = useState("");
+  const [intent, setIntent] = useState("");
+  const [condition, setCondition] = useState("");
+  const [featured, setFeatured] = useState<"all" | "featured" | "not_featured">("all");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
   const [confirm, setConfirm] = useState<ConfirmState>(null);
-  const [viewing, setViewing] = useState<AdminMarketplaceItem | null>(null);
 
   useEffect(() => {
     setPage(1);
   }, [limit]);
 
+  const activeFilters = useMemo(
+    () => ({
+      category: category.trim() || undefined,
+      district: district.trim() || undefined,
+      intent: intent || undefined,
+      condition: condition || undefined,
+      featured: featured === "all" ? undefined : featured,
+      priceMin: priceMin ? Number(priceMin) : undefined,
+      priceMax: priceMax ? Number(priceMax) : undefined,
+      createdFrom: createdFrom || undefined,
+      createdTo: createdTo || undefined
+    }),
+    [category, createdFrom, createdTo, condition, district, featured, intent, priceMax, priceMin]
+  );
+
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["admin-marketplace", page, limit, statusFilter, searchQ],
-    queryFn: () => listAdminMarketplace(page, limit, statusFilter, searchQ || undefined)
+    queryKey: ["admin-marketplace", page, limit, statusFilter, searchQ, activeFilters],
+    queryFn: () => listAdminMarketplace(page, limit, statusFilter, searchQ || undefined, activeFilters)
+  });
+  const overviewQuery = useQuery({
+    queryKey: ["admin-marketplace-overview"],
+    queryFn: getMarketplaceOverview
   });
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-marketplace"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-marketplace-overview"] });
     queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
   };
 
@@ -88,7 +121,6 @@ export function MarketplacePage() {
     onSuccess: () => {
       invalidate();
       setConfirm(null);
-      setViewing(null);
       addToast("Listing approved.", "success");
     },
     onError: (err) =>
@@ -101,7 +133,6 @@ export function MarketplacePage() {
     onSuccess: () => {
       invalidate();
       setConfirm(null);
-      setViewing(null);
       addToast("Listing rejected.", "success");
     },
     onError: (err) =>
@@ -114,7 +145,6 @@ export function MarketplacePage() {
     onSuccess: () => {
       invalidate();
       setConfirm(null);
-      setViewing(null);
       addToast("Changes requested.", "success");
     },
     onError: (err) =>
@@ -127,7 +157,6 @@ export function MarketplacePage() {
     onSuccess: () => {
       invalidate();
       setConfirm(null);
-      setViewing(null);
       addToast("Listing hidden.", "success");
     },
     onError: (err) =>
@@ -139,7 +168,6 @@ export function MarketplacePage() {
     onSuccess: () => {
       invalidate();
       setConfirm(null);
-      setViewing(null);
       addToast("Listing restored.", "success");
     },
     onError: (err) =>
@@ -151,7 +179,6 @@ export function MarketplacePage() {
     onSuccess: () => {
       invalidate();
       setConfirm(null);
-      setViewing(null);
       addToast("Reports dismissed.", "success");
     },
     onError: (err) =>
@@ -163,7 +190,6 @@ export function MarketplacePage() {
     onSuccess: () => {
       invalidate();
       setConfirm(null);
-      setViewing(null);
       addToast("Listing deleted.", "success");
     },
     onError: (err) =>
@@ -176,15 +202,33 @@ export function MarketplacePage() {
     onSuccess: (_data, vars) => {
       invalidate();
       setConfirm(null);
-      setViewing((prev) =>
-        prev && prev.id === vars.id
-          ? { ...prev, marketplaceFeatured: vars.featured }
-          : prev
-      );
       addToast(vars.featured ? "Listing featured." : "Feature removed.", "success");
     },
     onError: (err) =>
       addToast(err instanceof Error ? err.message : "Failed to update feature", "error")
+  });
+
+  const softDeleteMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      softDeleteAdminMarketplace(id, reason),
+    onSuccess: () => {
+      invalidate();
+      setConfirm(null);
+      addToast("Listing soft deleted.", "success");
+    },
+    onError: (err) =>
+      addToast(err instanceof Error ? err.message : "Failed to soft delete", "error")
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => restoreSoftDeletedAdminMarketplace(id),
+    onSuccess: () => {
+      invalidate();
+      setConfirm(null);
+      addToast("Listing restored to pending review.", "success");
+    },
+    onError: (err) =>
+      addToast(err instanceof Error ? err.message : "Failed to restore listing", "error")
   });
 
   const mutationPending =
@@ -195,9 +239,12 @@ export function MarketplacePage() {
     unhideMutation.isPending ||
     dismissReportsMutation.isPending ||
     deleteMutation.isPending ||
-    featureMutation.isPending;
+    featureMutation.isPending ||
+    softDeleteMutation.isPending ||
+    restoreMutation.isPending;
 
   const counts = data?.counts;
+  const overview = overviewQuery.data as MarketplaceOverviewResponse | undefined;
 
   const requestReject = (listing: AdminMarketplaceItem) => {
     const reason = promptRequiredNote("Rejection reason");
@@ -238,17 +285,14 @@ export function MarketplacePage() {
     const isPending = r.marketplaceStatus === "PENDING_REVIEW";
     const isLive = r.marketplaceStatus === "LIVE";
     const isHidden = r.marketplaceStatus === "HIDDEN";
+    const isArchived = r.marketplaceStatus === "ARCHIVED";
     const showReportedActions = statusFilter === "reported" || r.pendingReportCount > 0;
 
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setViewing(r)}
-          className="text-sm font-medium text-primary hover:underline"
-        >
+        <Link to={`/marketplace/${r.id}`} className="text-sm font-medium text-primary hover:underline">
           View
-        </button>
+        </Link>
         {isPending ? (
           <>
             <button
@@ -313,6 +357,15 @@ export function MarketplacePage() {
             Unhide
           </button>
         ) : null}
+        {isArchived ? (
+          <button
+            type="button"
+            onClick={() => setConfirm({ type: "restore", listing: r })}
+            className="text-sm font-medium text-emerald-700 hover:underline"
+          >
+            Restore
+          </button>
+        ) : null}
         {showReportedActions ? (
           <button
             type="button"
@@ -320,6 +373,15 @@ export function MarketplacePage() {
             className="text-sm font-medium text-indigo-700 hover:underline"
           >
             Dismiss reports
+          </button>
+        ) : null}
+        {!isArchived ? (
+          <button
+            type="button"
+            onClick={() => setConfirm({ type: "softDelete", listing: r })}
+            className="text-sm font-medium text-slate-700 hover:underline"
+          >
+            Soft delete
           </button>
         ) : null}
         <button
@@ -341,7 +403,9 @@ export function MarketplacePage() {
         label: "Title",
         render: (r: AdminMarketplaceItem) => (
           <div>
-            <div className="font-medium text-slate-900">{r.title}</div>
+            <Link to={`/marketplace/${r.id}`} className="font-medium text-slate-900 hover:text-primary hover:underline">
+              {r.title}
+            </Link>
             {r.marketplaceCategory ? (
               <div className="text-xs text-slate-500">
                 {r.marketplaceCategory.replace(/_/g, " ")}
@@ -366,7 +430,20 @@ export function MarketplacePage() {
         render: (r: AdminMarketplaceItem) => (
           <div>
             <div>{r.author.fullName}</div>
-            <div className="text-xs text-slate-500">{r.author.email}</div>
+            <div className="text-xs text-slate-500">
+              {r.author.email}
+              {r.author.mobile ? ` · ${r.author.mobile}` : ""}
+            </div>
+          </div>
+        )
+      },
+      {
+        key: "reach",
+        label: "Reach",
+        render: (r: AdminMarketplaceItem) => (
+          <div className="text-sm text-slate-600">
+            <div>{r.viewCount} views</div>
+            <div className="text-xs text-slate-500">{r.favoriteCount} saves</div>
           </div>
         )
       },
@@ -382,6 +459,11 @@ export function MarketplacePage() {
             {r.pendingReportCount > 0 ? (
               <span className="inline-flex w-fit rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">
                 {r.pendingReportCount} report{r.pendingReportCount === 1 ? "" : "s"}
+              </span>
+            ) : null}
+            {r.marketplaceFeatured ? (
+              <span className="inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                Featured
               </span>
             ) : null}
           </div>
@@ -404,67 +486,79 @@ export function MarketplacePage() {
   const confirmTitle =
     confirm?.type === "delete"
       ? "Delete listing?"
-      : confirm?.type === "approve"
-        ? "Approve listing?"
-        : confirm?.type === "reject"
-          ? "Reject listing?"
-          : confirm?.type === "requestChanges"
-            ? "Request changes?"
-            : confirm?.type === "hide"
-              ? "Hide listing?"
-              : confirm?.type === "unhide"
-                ? "Unhide listing?"
-                : confirm?.type === "dismissReports"
-                  ? "Dismiss reports?"
-                  : confirm?.type === "feature"
-                    ? "Feature listing?"
-                    : confirm?.type === "unfeature"
-                      ? "Remove feature?"
-                      : "Confirm";
+      : confirm?.type === "softDelete"
+        ? "Soft delete listing?"
+        : confirm?.type === "restore"
+          ? "Restore listing?"
+          : confirm?.type === "approve"
+            ? "Approve listing?"
+            : confirm?.type === "reject"
+              ? "Reject listing?"
+              : confirm?.type === "requestChanges"
+                ? "Request changes?"
+                : confirm?.type === "hide"
+                  ? "Hide listing?"
+                  : confirm?.type === "unhide"
+                    ? "Unhide listing?"
+                    : confirm?.type === "dismissReports"
+                      ? "Dismiss reports?"
+                      : confirm?.type === "feature"
+                        ? "Feature listing?"
+                        : confirm?.type === "unfeature"
+                          ? "Remove feature?"
+                          : "Confirm";
 
   const confirmMessage =
     confirm?.type === "delete"
       ? `Permanently delete “${confirm.listing.title}”? This cannot be undone.`
-      : confirm?.type === "approve"
-        ? `Approve “${confirm.listing.title}” and make it live? The seller will be notified.`
-        : confirm?.type === "reject"
-          ? `Reject “${confirm.listing.title}”? Reason: ${confirm.reason}`
-          : confirm?.type === "requestChanges"
-            ? `Ask the seller to revise “${confirm.listing.title}”? Notes: ${confirm.notes}`
-            : confirm?.type === "hide"
-              ? `Hide “${confirm.listing.title}” from the marketplace?${
-                  confirm.reason ? ` Reason: ${confirm.reason}` : ""
-                }`
-              : confirm?.type === "unhide"
-                ? `Restore “${confirm.listing.title}” to live?`
-                : confirm?.type === "dismissReports"
-                  ? `Dismiss pending reports on “${confirm.listing.title}”?`
-                  : confirm?.type === "feature"
-                    ? `Pin “${confirm.listing.title}” to the top of browse results?`
-                    : confirm?.type === "unfeature"
-                      ? `Remove featured placement for “${confirm.listing.title}”?`
-                      : "";
+      : confirm?.type === "softDelete"
+        ? `Archive “${confirm.listing.title}” (soft delete)? History is preserved.`
+        : confirm?.type === "restore"
+          ? `Restore “${confirm.listing.title}” to pending review?`
+          : confirm?.type === "approve"
+            ? `Approve “${confirm.listing.title}” and make it live? The seller will be notified.`
+            : confirm?.type === "reject"
+              ? `Reject “${confirm.listing.title}”? Reason: ${confirm.reason}`
+              : confirm?.type === "requestChanges"
+                ? `Ask the seller to revise “${confirm.listing.title}”? Notes: ${confirm.notes}`
+                : confirm?.type === "hide"
+                  ? `Hide “${confirm.listing.title}” from the marketplace?${
+                      confirm.reason ? ` Reason: ${confirm.reason}` : ""
+                    }`
+                  : confirm?.type === "unhide"
+                    ? `Restore “${confirm.listing.title}” to live?`
+                    : confirm?.type === "dismissReports"
+                      ? `Dismiss pending reports on “${confirm.listing.title}”?`
+                      : confirm?.type === "feature"
+                        ? `Pin “${confirm.listing.title}” to the top of browse results?`
+                        : confirm?.type === "unfeature"
+                          ? `Remove featured placement for “${confirm.listing.title}”?`
+                          : "";
 
   const confirmLabel =
     confirm?.type === "delete"
       ? "Delete"
-      : confirm?.type === "approve"
-        ? "Approve"
-        : confirm?.type === "reject"
-          ? "Reject"
-          : confirm?.type === "requestChanges"
-            ? "Request changes"
-            : confirm?.type === "hide"
-              ? "Hide"
-              : confirm?.type === "unhide"
-                ? "Unhide"
-                : confirm?.type === "dismissReports"
-                  ? "Dismiss reports"
-                  : confirm?.type === "feature"
-                    ? "Feature"
-                    : confirm?.type === "unfeature"
-                      ? "Unfeature"
-                      : "Confirm";
+      : confirm?.type === "softDelete"
+        ? "Soft delete"
+        : confirm?.type === "restore"
+          ? "Restore"
+          : confirm?.type === "approve"
+            ? "Approve"
+            : confirm?.type === "reject"
+              ? "Reject"
+              : confirm?.type === "requestChanges"
+                ? "Request changes"
+                : confirm?.type === "hide"
+                  ? "Hide"
+                  : confirm?.type === "unhide"
+                    ? "Unhide"
+                    : confirm?.type === "dismissReports"
+                      ? "Dismiss reports"
+                      : confirm?.type === "feature"
+                        ? "Feature"
+                        : confirm?.type === "unfeature"
+                          ? "Unfeature"
+                          : "Confirm";
 
   return (
     <div>
@@ -473,60 +567,162 @@ export function MarketplacePage() {
           Review pending listings, request changes, hide reported posts, and remove abusive
           content.
         </p>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <span className="rounded-lg bg-amber-50 px-3 py-1.5 font-medium text-amber-800">
-            Pending: {counts?.pending ?? 0}
-          </span>
-          <span className="rounded-lg bg-sky-50 px-3 py-1.5 font-medium text-sky-800">
-            Changes: {counts?.changes ?? 0}
-          </span>
-          <span className="rounded-lg bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
-            Live: {counts?.live ?? 0}
-          </span>
-          <span className="rounded-lg bg-red-50 px-3 py-1.5 font-medium text-red-800">
-            Rejected: {counts?.rejected ?? 0}
-          </span>
-          <span className="rounded-lg bg-slate-100 px-3 py-1.5 font-medium text-slate-700">
-            Sold: {counts?.sold ?? 0}
-          </span>
-          <span className="rounded-lg bg-violet-50 px-3 py-1.5 font-medium text-violet-800">
-            Hidden: {counts?.hidden ?? 0}
-          </span>
-          <span className="rounded-lg bg-orange-50 px-3 py-1.5 font-medium text-orange-800">
-            Expired: {counts?.expired ?? 0}
-          </span>
-          <span className="rounded-lg bg-stone-100 px-3 py-1.5 font-medium text-stone-700">
-            Archived: {counts?.archived ?? 0}
-          </span>
-          <span className="rounded-lg bg-rose-50 px-3 py-1.5 font-medium text-rose-800">
-            Reported: {counts?.reported ?? 0}
-          </span>
-          <span className="rounded-lg bg-blue-50 px-3 py-1.5 font-medium text-blue-800">
-            All: {counts?.all ?? 0}
-          </span>
+        <div className="flex flex-wrap gap-2 text-sm">
+          {(
+            [
+              ["pending", "Pending", counts?.pending ?? 0],
+              ["changes", "Changes", counts?.changes ?? 0],
+              ["live", "Live", counts?.live ?? 0],
+              ["reported", "Reported", counts?.reported ?? 0],
+              ["rejected", "Rejected", counts?.rejected ?? 0],
+              ["hidden", "Hidden", counts?.hidden ?? 0],
+              ["sold", "Sold", counts?.sold ?? 0],
+              ["expired", "Expired", counts?.expired ?? 0],
+              ["archived", "Archived", counts?.archived ?? 0],
+              ["all", "All", counts?.all ?? 0]
+            ] as const
+          ).map(([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setPage(1);
+                setStatusFilter(value);
+              }}
+              className={`rounded-lg px-3 py-1.5 font-medium ${
+                statusFilter === value
+                  ? "bg-primary text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              {label}: {count}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setPage(1);
-            setStatusFilter(e.target.value as MarketplaceStatusFilter);
-          }}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-        >
-          <option value="pending">Pending</option>
-          <option value="changes">Changes requested</option>
-          <option value="live">Live</option>
-          <option value="rejected">Rejected</option>
-          <option value="sold">Sold</option>
-          <option value="hidden">Hidden</option>
-          <option value="expired">Expired</option>
-          <option value="archived">Archived</option>
-          <option value="reported">Reported</option>
-          <option value="all">All</option>
-        </select>
+      {overview ? (
+        <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {[
+            ["Pending review", overview.cards.pending, "bg-amber-50 text-amber-900", () => { setPage(1); setStatusFilter("pending"); setFeatured("all"); }],
+            ["Live listings", overview.cards.live, "bg-emerald-50 text-emerald-900", () => { setPage(1); setStatusFilter("live"); setFeatured("all"); }],
+            ["Reported", overview.cards.reported, "bg-rose-50 text-rose-900", () => { setPage(1); setStatusFilter("reported"); setFeatured("all"); }],
+            ["Featured", overview.cards.featured, "bg-violet-50 text-violet-900", () => { setPage(1); setStatusFilter("all"); setFeatured("featured"); }],
+            ["Created today", overview.cards.todaysListings, "bg-sky-50 text-sky-900", () => { setPage(1); setStatusFilter("all"); setFeatured("all"); }]
+          ].map(([label, value, tone, onClick]) => (
+            <button
+              key={label as string}
+              type="button"
+              onClick={onClick as () => void}
+              className={`rounded-2xl border border-slate-200 p-4 text-left ${tone}`}
+            >
+              <div className="text-sm font-medium">{label as string}</div>
+              <div className="mt-2 text-3xl font-semibold">{value as number}</div>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {overview ? (
+        <div className="mb-6 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <h3 className="text-sm font-semibold text-slate-900">Top categories</h3>
+            <div className="mt-3 space-y-2 text-sm text-slate-600">
+              {overview.topCategories.length ? overview.topCategories.map((item) => (
+                <div key={item.category} className="flex items-center justify-between gap-3">
+                  <span>{item.category.replace(/_/g, " ")}</span>
+                  <span className="font-medium text-slate-900">{item.count}</span>
+                </div>
+              )) : <div>No category data yet.</div>}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <h3 className="text-sm font-semibold text-slate-900">Featured listings</h3>
+            <div className="mt-3 space-y-3 text-sm text-slate-600">
+              {(overview.featuredListings?.length ?? 0)
+                ? overview.featuredListings!.map((item) => (
+                    <Link
+                      key={item.id}
+                      to={`/marketplace/${item.id}`}
+                      className="block border-b border-slate-100 pb-3 last:border-b-0 last:pb-0 hover:text-primary"
+                    >
+                      <div className="font-medium text-slate-900">{item.title}</div>
+                      <div className="text-xs text-slate-500">
+                        #{item.id} · {item.category?.replace(/_/g, " ") ?? "No category"}
+                      </div>
+                    </Link>
+                  ))
+                : <div>No featured listings.</div>}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <h3 className="text-sm font-semibold text-slate-900">Recent listings</h3>
+            <div className="mt-3 space-y-3 text-sm text-slate-600">
+              {overview.recentListings.length ? overview.recentListings.map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/marketplace/${item.id}`}
+                  className="block border-b border-slate-100 pb-3 last:border-b-0 last:pb-0 hover:text-primary"
+                >
+                  <div className="font-medium text-slate-900">{item.title}</div>
+                  <div className="text-xs text-slate-500">
+                    #{item.id} · {item.category?.replace(/_/g, " ") ?? "No category"} ·{" "}
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </div>
+                </Link>
+              )) : <div>No recent listings yet.</div>}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {overview?.analytics ? (
+        <div className="mb-6 grid gap-4 lg:grid-cols-4">
+          {[
+            ["Created (7d)", overview.analytics.createdLast7Days],
+            ["Created (30d)", overview.analytics.createdLast30Days],
+            ["Approved (30d)", overview.analytics.approvedLast30Days],
+            ["Sold (30d)", overview.analytics.soldLast30Days],
+            ["Report rate", `${overview.analytics.reportRatePercent}%`],
+            ["Sell-through", `${overview.analytics.sellThroughPercent}%`],
+            ["Expiring soon", overview.cards.expiringSoon ?? overview.analytics.expiringSoon.length],
+            ["Archived", overview.cards.archived ?? 0]
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-sm text-slate-500">{label}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{value}</div>
+            </div>
+          ))}
+          <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+            <h3 className="text-sm font-semibold text-slate-900">Most viewed</h3>
+            <div className="mt-3 space-y-2 text-sm">
+              {overview.analytics.mostViewed.length
+                ? overview.analytics.mostViewed.map((item) => (
+                    <Link key={item.id} to={`/marketplace/${item.id}`} className="flex items-center justify-between gap-3 hover:text-primary">
+                      <span className="truncate">{item.title}</span>
+                      <span className="font-medium text-slate-900">{item.views}</span>
+                    </Link>
+                  ))
+                : <div className="text-slate-500">No view data yet.</div>}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+            <h3 className="text-sm font-semibold text-slate-900">Expiring within 7 days</h3>
+            <div className="mt-3 space-y-2 text-sm">
+              {overview.analytics.expiringSoon.length
+                ? overview.analytics.expiringSoon.map((item) => (
+                    <Link key={item.id} to={`/marketplace/${item.id}`} className="flex items-center justify-between gap-3 hover:text-primary">
+                      <span className="truncate">{item.title}</span>
+                      <span className="text-xs text-slate-500">{new Date(item.expiresAt).toLocaleDateString()}</span>
+                    </Link>
+                  ))
+                : <div className="text-slate-500">Nothing expiring soon.</div>}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 lg:grid-cols-4">
         <input
           value={searchDraft}
           onChange={(e) => setSearchDraft(e.target.value)}
@@ -536,8 +732,76 @@ export function MarketplacePage() {
               setSearchQ(searchDraft.trim());
             }
           }}
-          placeholder="Search title, category, district…"
-          className="min-w-[240px] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+          placeholder="Search ID, title, district, seller, phone…"
+          className="min-w-[240px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        />
+        <input
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="Category"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        />
+        <input
+          value={district}
+          onChange={(e) => setDistrict(e.target.value)}
+          placeholder="District"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        />
+        <select
+          value={intent}
+          onChange={(e) => setIntent(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="">All intents</option>
+          <option value="SELL">Sell</option>
+          <option value="BUY">Buy</option>
+          <option value="FREE">Free</option>
+        </select>
+        <select
+          value={condition}
+          onChange={(e) => setCondition(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="">All conditions</option>
+          <option value="NEW">New</option>
+          <option value="LIKE_NEW">Like new</option>
+          <option value="GOOD">Good</option>
+          <option value="FAIR">Fair</option>
+        </select>
+        <select
+          value={featured}
+          onChange={(e) => setFeatured(e.target.value as "all" | "featured" | "not_featured")}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="all">All featured states</option>
+          <option value="featured">Featured only</option>
+          <option value="not_featured">Not featured</option>
+        </select>
+        <input
+          value={priceMin}
+          onChange={(e) => setPriceMin(e.target.value)}
+          placeholder="Min price"
+          inputMode="numeric"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        />
+        <input
+          value={priceMax}
+          onChange={(e) => setPriceMax(e.target.value)}
+          placeholder="Max price"
+          inputMode="numeric"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        />
+        <input
+          type="date"
+          value={createdFrom}
+          onChange={(e) => setCreatedFrom(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        />
+        <input
+          type="date"
+          value={createdTo}
+          onChange={(e) => setCreatedTo(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
         />
         <button
           type="button"
@@ -548,6 +812,26 @@ export function MarketplacePage() {
           className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
         >
           Search
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setPage(1);
+            setSearchDraft("");
+            setSearchQ("");
+            setCategory("");
+            setDistrict("");
+            setIntent("");
+            setCondition("");
+            setFeatured("all");
+            setPriceMin("");
+            setPriceMax("");
+            setCreatedFrom("");
+            setCreatedTo("");
+          }}
+          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+        >
+          Reset
         </button>
       </div>
 
@@ -576,196 +860,7 @@ export function MarketplacePage() {
         </>
       )}
 
-      {viewing ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">{viewing.title}</h3>
-                <p className="text-sm text-slate-500">
-                  {viewing.marketplaceCategory?.replace(/_/g, " ") ?? "No category"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewing(null)}
-                className="text-slate-500 hover:text-slate-800"
-              >
-                Close
-              </button>
-            </div>
-            {viewing.marketplaceGallery && viewing.marketplaceGallery.length > 1 ? (
-              <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-                {viewing.marketplaceGallery.map((url) => (
-                  <img
-                    key={url}
-                    src={url}
-                    alt=""
-                    className="h-28 w-28 shrink-0 rounded-lg object-cover"
-                  />
-                ))}
-              </div>
-            ) : viewing.mediaUrl ? (
-              <img
-                src={viewing.mediaUrl}
-                alt=""
-                className="mb-4 max-h-56 w-full rounded-lg object-cover"
-              />
-            ) : null}
-            <dl className="space-y-2 text-sm">
-              <div>
-                <dt className="font-medium text-slate-700">Status</dt>
-                <dd className="flex flex-wrap items-center gap-2">
-                  <StatusBadge
-                    status={viewing.marketplaceStatus.replace(/_/g, " ")}
-                    variant={marketplaceBadgeVariant(viewing.marketplaceStatus)}
-                  />
-                  {viewing.pendingReportCount > 0 ? (
-                    <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">
-                      {viewing.pendingReportCount} report
-                      {viewing.pendingReportCount === 1 ? "" : "s"}
-                    </span>
-                  ) : null}
-                  {viewing.marketplaceFeatured ? (
-                    <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                      Featured
-                    </span>
-                  ) : null}
-                </dd>
-              </div>
-              {viewing.marketplaceExpiresAt ? (
-                <div>
-                  <dt className="font-medium text-slate-700">Expires</dt>
-                  <dd className="text-slate-600">
-                    {new Date(viewing.marketplaceExpiresAt).toLocaleString()}
-                  </dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="font-medium text-slate-700">Intent</dt>
-                <dd className="text-slate-600">{viewing.marketplaceIntent ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Condition</dt>
-                <dd className="text-slate-600">
-                  {viewing.marketplaceCondition?.replace(/_/g, " ") ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Price</dt>
-                <dd className="text-slate-600">{formatPrice(viewing)}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">District</dt>
-                <dd className="text-slate-600">{viewing.marketplaceDistrict ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Seller</dt>
-                <dd className="text-slate-600">
-                  {viewing.author.fullName} · {viewing.author.email}
-                  {viewing.author.mobile ? ` · ${viewing.author.mobile}` : ""}
-                </dd>
-              </div>
-              {viewing.marketplaceAdminNote ? (
-                <div>
-                  <dt className="font-medium text-slate-700">Admin note</dt>
-                  <dd className="whitespace-pre-wrap text-slate-600">
-                    {viewing.marketplaceAdminNote}
-                  </dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="font-medium text-slate-700">Description</dt>
-                <dd className="whitespace-pre-wrap text-slate-600">
-                  {viewing.description || "—"}
-                </dd>
-              </div>
-            </dl>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {viewing.marketplaceStatus === "PENDING_REVIEW" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setConfirm({ type: "approve", listing: viewing })}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => requestChanges(viewing)}
-                    className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white"
-                  >
-                    Request changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => requestReject(viewing)}
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white"
-                  >
-                    Reject
-                  </button>
-                </>
-              ) : null}
-              {viewing.marketplaceStatus === "LIVE" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => requestChanges(viewing)}
-                    className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white"
-                  >
-                    Request changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setConfirm({
-                        type: viewing.marketplaceFeatured ? "unfeature" : "feature",
-                        listing: viewing
-                      })
-                    }
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white"
-                  >
-                    {viewing.marketplaceFeatured ? "Unfeature" : "Feature"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => requestHide(viewing)}
-                    className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white"
-                  >
-                    Hide
-                  </button>
-                </>
-              ) : null}
-              {viewing.marketplaceStatus === "HIDDEN" ? (
-                <button
-                  type="button"
-                  onClick={() => setConfirm({ type: "unhide", listing: viewing })}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
-                >
-                  Unhide
-                </button>
-              ) : null}
-              {statusFilter === "reported" || viewing.pendingReportCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setConfirm({ type: "dismissReports", listing: viewing })}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
-                >
-                  Dismiss reports
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setConfirm({ type: "delete", listing: viewing })}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+
 
       <ConfirmModal
         open={Boolean(confirm)}
@@ -775,6 +870,7 @@ export function MarketplacePage() {
         variant={
           confirm?.type === "approve" ||
           confirm?.type === "unhide" ||
+          confirm?.type === "restore" ||
           confirm?.type === "dismissReports" ||
           confirm?.type === "feature" ||
           confirm?.type === "unfeature"
@@ -804,6 +900,10 @@ export function MarketplacePage() {
             featureMutation.mutate({ id: confirm.listing.id, featured: true });
           else if (confirm.type === "unfeature")
             featureMutation.mutate({ id: confirm.listing.id, featured: false });
+          else if (confirm.type === "softDelete")
+            softDeleteMutation.mutate({ id: confirm.listing.id });
+          else if (confirm.type === "restore")
+            restoreMutation.mutate(confirm.listing.id);
           else deleteMutation.mutate(confirm.listing.id);
         }}
       />

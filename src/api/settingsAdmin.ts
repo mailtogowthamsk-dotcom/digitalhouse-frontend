@@ -5,6 +5,17 @@ import { fetchApi } from "./client";
 
 export type AdminRole = "SUPER_ADMIN" | "ADMIN" | "MODERATOR";
 
+export type SettingsAdminRow = {
+  email: string;
+  role: AdminRole;
+  roleLabel: string;
+  isDefaultSuper: boolean;
+  name?: string | null;
+  isActive?: boolean;
+  lastLoginAt?: string | null;
+  source: "database" | "whitelist";
+};
+
 export type SettingsOverview = {
   ok: boolean;
   me: {
@@ -16,13 +27,10 @@ export type SettingsOverview = {
     mode: string;
     note: string;
     whitelistCount: number;
+    databaseCount?: number;
+    apiKeyRole?: AdminRole;
   };
-  admins: Array<{
-    email: string;
-    role: AdminRole;
-    roleLabel: string;
-    isDefaultSuper: boolean;
-  }>;
+  admins: SettingsAdminRow[];
   matrix: {
     roles: Array<{ code: AdminRole; label: string }>;
     modules: Array<{
@@ -66,5 +74,32 @@ export async function setAdminRole(
   return fetchApi("/api/admin/settings/roles", {
     method: "PUT",
     body: JSON.stringify({ email, role })
+  });
+}
+
+export async function createAdminUser(input: {
+  name: string;
+  email: string;
+  password: string;
+  role: AdminRole;
+}): Promise<{ message: string; overview: SettingsOverview }> {
+  return fetchApi("/api/admin/settings/admins", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateAdminUser(
+  email: string,
+  patch: {
+    name?: string;
+    role?: AdminRole;
+    isActive?: boolean;
+    password?: string;
+  }
+): Promise<{ message: string; overview: SettingsOverview }> {
+  return fetchApi(`/api/admin/settings/admins/${encodeURIComponent(email)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch)
   });
 }

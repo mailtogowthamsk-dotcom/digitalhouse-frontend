@@ -15,6 +15,7 @@ import {
 } from "../components/admin/AdminListControls";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useToast } from "../context/ToastContext";
+import { PermissionGate } from "../components/PermissionGate";
 
 function DataCompare({
   current,
@@ -151,22 +152,24 @@ export function BusinessApprovalPage() {
                 </div>
                 <DataCompare current={u.currentApproved} pending={u.data} />
                 <div className="mt-4 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => approveMutation.mutate(u.id)}
-                    disabled={approveMutation.isPending}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRejecting(u)}
-                    disabled={rejectMutation.isPending}
-                    className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-                  >
-                    Reject
-                  </button>
+                  <PermissionGate action="users.approve">
+                    <button
+                      type="button"
+                      onClick={() => approveMutation.mutate(u.id)}
+                      disabled={approveMutation.isPending}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRejecting(u)}
+                      disabled={rejectMutation.isPending}
+                      className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                    >
+                      Reject
+                    </button>
+                  </PermissionGate>
                 </div>
               </div>
             ))}

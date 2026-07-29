@@ -36,6 +36,18 @@ export type AdminReportDetail = AdminReportItem & {
     note: string | null;
     createdAt: string;
   }>;
+  relatedReports?: Array<{
+    id: number;
+    reason: string;
+    status: string;
+    createdAt: string;
+    reporterId: number;
+  }>;
+  matrimonyStatus?: {
+    profileActive: boolean;
+    suspended: boolean;
+    accountStatus: string;
+  };
 };
 
 export type AdminReportsListResponse = {
@@ -135,23 +147,35 @@ export async function suspendFromAdminReport(
   });
 }
 
-export async function warnAdminUser(userId: number, message?: string): Promise<{ message: string }> {
+export async function warnAdminUser(
+  userId: number,
+  message?: string,
+  postId?: number
+): Promise<{ message: string }> {
   return fetchApi(`/api/admin/users/${userId}/warn`, {
     method: "POST",
-    body: JSON.stringify({ message })
+    body: JSON.stringify({ message, ...(postId ? { postId } : {}) })
   });
 }
 
-export async function suspendAdminUser(userId: number, reason?: string): Promise<{ message: string }> {
+export async function suspendAdminUser(
+  userId: number,
+  reason?: string,
+  postId?: number
+): Promise<{ message: string }> {
   return fetchApi(`/api/admin/users/${userId}/suspend`, {
     method: "POST",
-    body: JSON.stringify({ reason })
+    body: JSON.stringify({ reason, ...(postId ? { postId } : {}) })
   });
 }
 
-export async function reactivateAdminUser(userId: number): Promise<{ message: string }> {
+export async function reactivateAdminUser(
+  userId: number,
+  remarks?: string,
+  postId?: number
+): Promise<{ message: string }> {
   return fetchApi(`/api/admin/users/${userId}/reactivate`, {
     method: "POST",
-    body: "{}"
+    body: JSON.stringify({ remarks, ...(postId ? { postId } : {}) })
   });
 }

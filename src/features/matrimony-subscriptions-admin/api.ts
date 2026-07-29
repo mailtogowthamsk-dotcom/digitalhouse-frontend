@@ -75,6 +75,26 @@ export async function recordPaymentRefund(
   });
 }
 
+export async function extendSubscription(
+  subscriptionId: number,
+  body: { durationMonths: number; adminNote?: string }
+): Promise<void> {
+  await fetchApi(`/api/admin/matrimony/subscriptions/${subscriptionId}/extend`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function cancelSubscription(
+  subscriptionId: number,
+  body?: { adminNote?: string }
+): Promise<void> {
+  await fetchApi(`/api/admin/matrimony/subscriptions/${subscriptionId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify(body ?? {})
+  });
+}
+
 export async function downloadAdminCsv(path: string, filename: string): Promise<void> {
   const url = apiUrl(path);
   const res = await fetch(url, { credentials: "same-origin", headers: authHeaders() });

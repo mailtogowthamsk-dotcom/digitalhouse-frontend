@@ -7,7 +7,9 @@ const cards = [
   { key: "pendingUserApprovals", label: "Pending User Approvals", link: "/users?status=PENDING", color: "bg-amber-50 border-amber-200 text-amber-800" },
   { key: "pendingMatrimonyApprovals", label: "Matrimony Requests", link: "/matrimony", color: "bg-amber-50 border-amber-200 text-amber-800" },
   { key: "pendingBusinessApprovals", label: "Pending Business", link: "/business", color: "bg-amber-50 border-amber-200 text-amber-800" },
-  { key: "reportedPosts", label: "Reported Posts", link: "/reports", color: "bg-red-50 border-red-200 text-red-800" }
+  { key: "reportedPosts", label: "Reported Posts", link: "/reports", color: "bg-red-50 border-red-200 text-red-800" },
+  { key: "pendingMarketplaceListings", label: "Marketplace Pending", link: "/marketplace", color: "bg-violet-50 border-violet-200 text-violet-800" },
+  { key: "reportedMarketplaceListings", label: "Marketplace Reported", link: "/marketplace", color: "bg-rose-50 border-rose-200 text-rose-800" }
 ] as const;
 
 export function DashboardPage() {
@@ -21,7 +23,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {cards.map(({ key, label, link, color }) => (
           <Link
             key={key}
@@ -55,6 +57,18 @@ export function DashboardPage() {
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Send Announcement
+          </Link>
+          <Link
+            to="/posts"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Open Post Moderation
+          </Link>
+          <Link
+            to="/marketplace"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Marketplace Queue
           </Link>
           <Link
             to="/reports"

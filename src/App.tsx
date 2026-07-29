@@ -4,11 +4,13 @@ import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ToastContainer } from "./components/Toast";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ModuleRoute } from "./components/ModuleRoute";
 import { DashboardLayout } from "./components/Layout/DashboardLayout";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
+import { UserDetailPage } from "./pages/UserDetailPage";
 import { MatrimonyRequestsListPage } from "./features/matrimony-admin/pages/MatrimonyRequestsListPage";
 import { MatrimonyRequestDetailPage } from "./features/matrimony-admin/pages/MatrimonyRequestDetailPage";
 import { MatrimonyReportsListPage } from "./features/matrimony-admin/pages/MatrimonyReportsListPage";
@@ -17,7 +19,10 @@ import { MatrimonySubscriptionDetailPage } from "./features/matrimony-subscripti
 import { BusinessApprovalPage } from "./pages/BusinessApprovalPage";
 import { PostsModerationPage } from "./pages/PostsModerationPage";
 import { JobPortalPage } from "./pages/JobPortalPage";
+import { JobDetailPage } from "./pages/JobDetailPage";
+import { JobApplicationsPage } from "./pages/JobApplicationsPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
+import { MarketplaceDetailPage } from "./pages/MarketplaceDetailPage";
 import { HelpingHandPage } from "./pages/HelpingHandPage";
 import { ProminentPeoplePage } from "./pages/ProminentPeoplePage";
 import { MasterDataPage } from "./pages/MasterDataPage";
@@ -27,6 +32,7 @@ import { SupportPage } from "./pages/SupportPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { PlatformManagementPage } from "./pages/PlatformManagementPage";
+import { SystemSchedulerPage, SystemSchedulerDetailPage } from "./pages/SystemSchedulerPage";
 import { AdminErrorBoundary } from "./components/AdminErrorBoundary";
 import "./index.css";
 
@@ -35,6 +41,10 @@ const queryClient = new QueryClient({
     queries: { staleTime: 30 * 1000, retry: 1 }
   }
 });
+
+function M({ module, children }: { module: string; children: React.ReactNode }) {
+  return <ModuleRoute module={module}>{children}</ModuleRoute>;
+}
 
 export default function App() {
   return (
@@ -55,29 +65,59 @@ export default function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="users" element={<UserManagementPage />} />
-                <Route path="matrimony" element={<MatrimonyRequestsListPage />} />
-                <Route path="matrimony-reports" element={<MatrimonyReportsListPage />} />
-                <Route path="matrimony-subscriptions" element={<MatrimonySubscriptionsPage />} />
+                <Route path="dashboard" element={<M module="dashboard"><DashboardPage /></M>} />
+                <Route path="users" element={<M module="users"><UserManagementPage /></M>} />
+                <Route path="users/:id" element={<M module="users"><UserDetailPage /></M>} />
+                <Route path="matrimony" element={<M module="matrimony"><MatrimonyRequestsListPage /></M>} />
+                <Route
+                  path="matrimony-reports"
+                  element={<M module="matrimony_reports"><MatrimonyReportsListPage /></M>}
+                />
+                <Route
+                  path="matrimony-subscriptions"
+                  element={<M module="matrimony_subscriptions"><MatrimonySubscriptionsPage /></M>}
+                />
                 <Route
                   path="matrimony-subscriptions/:id"
-                  element={<MatrimonySubscriptionDetailPage />}
+                  element={<M module="matrimony_subscriptions"><MatrimonySubscriptionDetailPage /></M>}
                 />
-                <Route path="matrimony/:id" element={<MatrimonyRequestDetailPage />} />
-                <Route path="business" element={<BusinessApprovalPage />} />
-                <Route path="posts" element={<PostsModerationPage />} />
-                <Route path="job-portal" element={<JobPortalPage />} />
-                <Route path="marketplace" element={<MarketplacePage />} />
-                <Route path="helping-hand" element={<HelpingHandPage />} />
-                <Route path="prominent-people" element={<ProminentPeoplePage />} />
-                <Route path="master-data" element={<MasterDataPage />} />
-                <Route path="community-content" element={<CommunityContentPage />} />
-                <Route path="reports" element={<ReportsPage />} />
-                <Route path="support" element={<SupportPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="platform" element={<PlatformManagementPage />} />
-                <Route path="settings" element={<SettingsPage />} />
+                <Route path="matrimony/:id" element={<M module="matrimony"><MatrimonyRequestDetailPage /></M>} />
+                <Route path="business" element={<M module="business"><BusinessApprovalPage /></M>} />
+                <Route path="posts" element={<M module="posts"><PostsModerationPage /></M>} />
+                <Route
+                  path="job-portal/applications"
+                  element={<M module="jobs"><JobApplicationsPage /></M>}
+                />
+                <Route path="job-portal/:id" element={<M module="jobs"><JobDetailPage /></M>} />
+                <Route path="job-portal" element={<M module="jobs"><JobPortalPage /></M>} />
+                <Route
+                  path="marketplace/:id"
+                  element={<M module="marketplace"><MarketplaceDetailPage /></M>}
+                />
+                <Route path="marketplace" element={<M module="marketplace"><MarketplacePage /></M>} />
+                <Route path="helping-hand" element={<M module="helping_hands"><HelpingHandPage /></M>} />
+                <Route
+                  path="prominent-people"
+                  element={<M module="prominent_people"><ProminentPeoplePage /></M>}
+                />
+                <Route path="master-data" element={<M module="master_data"><MasterDataPage /></M>} />
+                <Route
+                  path="community-content"
+                  element={<M module="community_content"><CommunityContentPage /></M>}
+                />
+                <Route path="reports" element={<M module="reports"><ReportsPage /></M>} />
+                <Route path="support" element={<M module="support"><SupportPage /></M>} />
+                <Route path="notifications" element={<M module="notifications"><NotificationsPage /></M>} />
+                <Route path="platform" element={<M module="platform"><PlatformManagementPage /></M>} />
+                <Route
+                  path="system-scheduler/:jobKey"
+                  element={<M module="system_scheduler"><SystemSchedulerDetailPage /></M>}
+                />
+                <Route
+                  path="system-scheduler"
+                  element={<M module="system_scheduler"><SystemSchedulerPage /></M>}
+                />
+                <Route path="settings" element={<M module="settings"><SettingsPage /></M>} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

@@ -32,6 +32,8 @@ export type DashboardStats = {
   pendingMatrimonyApprovals: number;
   pendingBusinessApprovals: number;
   reportedPosts: number;
+  pendingMarketplaceListings: number;
+  reportedMarketplaceListings: number;
 };
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -45,11 +47,21 @@ export type UserListItem = {
   email: string;
   mobile: string | null;
   community?: string | null;
+  kulam?: string | null;
   gender?: string | null;
+  district?: string | null;
+  city?: string | null;
   status: string;
+  emailVerified?: boolean;
   loginSource?: "Google" | "Existing Login" | "Both";
+  profilePhoto?: string | null;
+  subscriptionPlan?: string | null;
+  subscriptionStatus?: string | null;
+  communityRole?: string | null;
+  lastLoginProvider?: string | null;
   createdAt: string;
   updatedAt?: string;
+  deletedAt?: string | null;
 };
 
 export type UsersListResponse = { users: UserListItem[]; total: number; page: number; limit: number };
@@ -169,12 +181,128 @@ export type RegistrationReview = {
   registrationReviewedAt: string | null;
 };
 
-export async function getUserById(id: number): Promise<{
-  user: any;
-  verificationHistory: any[];
+export type AdminUserDetail = {
+  user: Record<string, any>;
+  profile: {
+    community: Record<string, unknown> | null;
+    personal: Record<string, unknown> | null;
+    matrimony: Record<string, unknown> | null;
+    business: Record<string, unknown> | null;
+    family: Record<string, unknown> | null;
+  };
   registrationReview?: RegistrationReview;
-}> {
-  return fetchApi(`/api/admin/users/${id}`);
+  verificationHistory: Array<{
+    id: number;
+    verifiedBy: string;
+    verifiedAt: string;
+    remarks: string | null;
+  }>;
+  activity: {
+    lastLoginProvider: string | null;
+    accountCreated: string;
+    lastActive: string;
+    numberOfLogins: number;
+    deviceCount: number;
+    onlineStatus: string;
+  };
+  statistics: Record<string, number | boolean>;
+  subscription: {
+    currentPlan: string;
+    status: string;
+    startDate: string | null;
+    endDate: string | null;
+    remainingDays: number | null;
+    paymentMethod: string;
+    transactionId: string | null;
+    totalAmountPaidPaise: number;
+    amountPaise?: number | null;
+  } | null;
+  storage: {
+    byModule: Array<{ module: string; fileType: string; bytes: number; files: number }>;
+    totalBytes: number;
+  };
+  notificationPreferences: Record<string, boolean> | null;
+  devices: Array<{
+    id: number;
+    platform: string;
+    deviceId: string | null;
+    appVersion: string | null;
+    lastUsedAt: string;
+    createdAt: string;
+  }>;
+  matrimonyStats: Record<string, unknown>;
+  marketplaceStats: Record<string, unknown>;
+  reports: {
+    reportsAgainstUser: number;
+    reportsSubmitted: number;
+    moderationActions: Array<{
+      id: number;
+      action: string;
+      note: string | null;
+      adminEmail: string;
+      createdAt: string;
+    }>;
+  };
+  security: Record<string, unknown>;
+  roles: Record<string, unknown>;
+  timeline: Array<{ at: string; type: string; label: string; meta?: string | null }>;
+  loginSource?: string;
+};
+
+export async function getUserById(id: number): Promise<AdminUserDetail> {
+  return fetchApi<AdminUserDetail>(`/api/admin/users/${id}`);
+}
+
+export type UpdateAdminUserPayload = {
+  fullName?: string;
+  username?: string | null;
+  gender?: string | null;
+  dob?: string | null;
+  email?: string;
+  mobile?: string | null;
+  occupation?: string | null;
+  location?: string | null;
+  community?: string | null;
+  kulam?: string | null;
+  bloodGroup?: string | null;
+  education?: string | null;
+  jobTitle?: string | null;
+  company?: string | null;
+  workLocation?: string | null;
+  skills?: string | null;
+  city?: string | null;
+  district?: string | null;
+  communityRole?: string | null;
+  profileVisibility?: "PUBLIC" | "PRIVATE";
+  allowConnectionRequests?: boolean;
+};
+
+export async function updateAdminUser(userId: number, payload: UpdateAdminUserPayload): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function softDeleteUser(userId: number, reason?: string): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}/soft-delete`, {
+    method: "POST",
+    body: JSON.stringify({ reason: reason ?? null })
+  });
+}
+
+export async function restoreUser(userId: number): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}/restore`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export async function hardDeleteUser(userId: number, reason?: string): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}/hard-delete`, {
+    method: "POST",
+    body: JSON.stringify({ confirm: "DELETE", reason: reason ?? null })
+  });
 }
 
 export type PendingProfileUpdate = {

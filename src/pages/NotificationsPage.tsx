@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 import {
   adminBroadcastNotification,
   getNotificationAudienceStats,
@@ -43,6 +44,8 @@ type AudienceMode = "all" | "selected";
 
 export function NotificationsPage() {
   const { addToast } = useToast();
+  const { hasAction } = useAuth();
+  const canBroadcast = hasAction("notifications.broadcast");
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -173,6 +176,15 @@ export function NotificationsPage() {
         />
       </div>
 
+      {!canBroadcast ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          You can view audience stats, but broadcasting requires the{" "}
+          <code className="text-xs">notifications.broadcast</code> permission.
+        </div>
+      ) : null}
+
+      {canBroadcast ? (
+        <>
       <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
         <p className="mb-3 text-sm font-medium text-slate-700">Quick templates</p>
         <div className="flex flex-wrap gap-2">
@@ -368,6 +380,8 @@ export function NotificationsPage() {
         onConfirm={confirmSend}
         onCancel={() => setConfirmOpen(false)}
       />
+        </>
+      ) : null}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 type Props = {
   open: boolean;
   title: string;
@@ -8,6 +10,7 @@ type Props = {
   confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  children?: ReactNode;
 };
 
 export function ConfirmModal({
@@ -19,7 +22,8 @@ export function ConfirmModal({
   variant = "default",
   confirmDisabled = false,
   onConfirm,
-  onCancel
+  onCancel,
+  children
 }: Props) {
   if (!open) return null;
   return (
@@ -27,6 +31,7 @@ export function ConfirmModal({
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
         <p className="mt-2 text-sm text-slate-600">{message}</p>
+        {children}
         <div className="mt-6 flex gap-3 justify-end">
           <button
             type="button"

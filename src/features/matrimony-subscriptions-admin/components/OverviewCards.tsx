@@ -32,6 +32,12 @@ const cards: {
     filter: "EXPIRED"
   },
   {
+    key: "expiringSoonSubscribers",
+    label: "Expiring soon",
+    accent: "border-orange-400 bg-orange-50",
+    activeAccent: "",
+  },
+  {
     key: "todayRevenueInr",
     label: "Today's revenue",
     accent: "border-amber-400 bg-amber-50",
@@ -39,9 +45,23 @@ const cards: {
     format: "inr"
   },
   {
+    key: "weekRevenueInr",
+    label: "This week",
+    accent: "border-cyan-400 bg-cyan-50",
+    activeAccent: "",
+    format: "inr"
+  },
+  {
     key: "monthRevenueInr",
     label: "This month",
     accent: "border-blue-400 bg-blue-50",
+    activeAccent: "",
+    format: "inr"
+  },
+  {
+    key: "yearRevenueInr",
+    label: "This year",
+    accent: "border-fuchsia-400 bg-fuchsia-50",
     activeAccent: "",
     format: "inr"
   },
@@ -71,6 +91,25 @@ const cards: {
     label: "New subs (30d)",
     accent: "border-indigo-400 bg-indigo-50",
     activeAccent: ""
+  },
+  {
+    key: "pendingPayments",
+    label: "Pending payments",
+    accent: "border-amber-400 bg-amber-50",
+    activeAccent: ""
+  },
+  {
+    key: "refundRequests",
+    label: "Refunded payments",
+    accent: "border-violet-400 bg-violet-50",
+    activeAccent: ""
+  },
+  {
+    key: "averageRevenuePerUserInr",
+    label: "Avg revenue / user",
+    accent: "border-emerald-400 bg-emerald-50",
+    activeAccent: "",
+    format: "inr"
   }
 ];
 
@@ -86,7 +125,7 @@ export function OverviewCards({
   onSelectFilter?: (filter: SubscriptionQuickFilter) => void;
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
       {cards.map((c) => {
         const raw = overview?.[c.key];
         let display: string | number = loading ? "—" : (raw ?? 0);

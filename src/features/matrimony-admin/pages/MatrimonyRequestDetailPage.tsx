@@ -21,7 +21,12 @@ import { VerificationPanel } from "../components/VerificationPanel";
 import { NotesPanel } from "../components/NotesPanel";
 import { AuditTimeline } from "../components/AuditTimeline";
 import { SubmissionCompare } from "../components/SubmissionCompare";
-import { MATRIMONY_FIELD_LABELS } from "../constants";
+import {
+  ApplicationHistoryPanel,
+  CurrentApplicationCard,
+  MatrimonyEventTimeline
+} from "../components/ApplicationHistory";
+import { MATRIMONY_FIELD_LABELS, VERIFICATION_LABELS } from "../constants";
 import { useToast } from "../../../context/ToastContext";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -157,6 +162,10 @@ export function MatrimonyRequestDetailPage() {
   const m = data.matrimonyPending ?? {};
   const u = data.user;
   const canModerate = data.rowStatus === "PENDING";
+  const verificationKeys = Object.keys(VERIFICATION_LABELS);
+  const verificationComplete = verificationKeys.every(
+    (k) => data.verification?.[k]?.checked === true
+  );
 
   return (
     <div className="pb-24">
@@ -186,9 +195,14 @@ export function MatrimonyRequestDetailPage() {
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-2xl font-bold text-slate-900">{String(u.fullName)}</h2>
             <WorkflowBadge status={data.workflowStatus} />
+            {(data.applicationCount ?? 1) > 1 ? (
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                {data.applicationCount} applications
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-sm text-slate-600">
-            Profile ID #{data.userId} · Request #{data.id}
+            User #{data.userId} · Application #{data.id} · Version {data.applicationVersion ?? 1}
           </p>
           <p className="mt-2 text-sm text-slate-500">
             Submitted {new Date(data.submittedAt).toLocaleString()} · Updated{" "}
@@ -198,6 +212,12 @@ export function MatrimonyRequestDetailPage() {
             Completion {data.profileCompletion}%
             {data.assignedReviewer && ` · Reviewer: ${data.assignedReviewer}`}
           </p>
+          <Link
+            to={`/users/${data.userId}`}
+            className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+          >
+            Open user profile
+          </Link>
           {!data.submittedForReview && data.workflowStatus !== "CHANGES_REQUESTED" && (
             <p className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900">
               Draft only — user has not submitted for approval yet.
@@ -210,6 +230,32 @@ export function MatrimonyRequestDetailPage() {
           )}
         </div>
       </header>
+
+      <div className="mt-6">
+        <CurrentApplicationCard
+          version={data.applicationVersion ?? 1}
+          status={data.workflowStatus}
+          submittedAt={data.submittedAt}
+          pendingSinceDays={data.pendingSinceDays}
+          completion={data.profileCompletion}
+          verificationComplete={verificationComplete}
+          assignedReviewer={data.assignedReviewer}
+          adminRemarks={data.adminRemarks}
+          changeRequestComment={data.changeRequest?.comment}
+          canAct={canModerate}
+          onApprove={() => approveMut.mutate()}
+          onReject={() => setRejectOpen(true)}
+          onRequestChanges={() => setChangesOpen(true)}
+          onScrollHistory={() =>
+            document.getElementById("application-history")?.scrollIntoView({ behavior: "smooth" })
+          }
+        />
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <ApplicationHistoryPanel history={data.applicationHistory ?? []} />
+        <MatrimonyEventTimeline events={data.timeline ?? []} />
+      </div>
 
       {(data.submissionSnapshot || (data.fieldChanges as unknown[])?.length > 0) && (
         <div className="mt-6">

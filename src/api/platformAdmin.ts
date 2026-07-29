@@ -184,6 +184,12 @@ export type AuditLog = {
   module: string;
   details: Record<string, unknown> | null;
   createdAt: string;
+  settingModule?: string | null;
+  setting?: string | null;
+  oldValue?: unknown;
+  newValue?: unknown;
+  changedBy?: string | null;
+  isConfigChange?: boolean;
 };
 
 export async function getPlatformDashboard(): Promise<PlatformDashboard> {
@@ -351,9 +357,126 @@ export async function getAdAnalytics(): Promise<AdAnalytics> {
 export async function listAudits(
   page = 1,
   limit = 50,
-  module?: string
-): Promise<{ ok: boolean; items: AuditLog[]; total: number; page: number; limit: number }> {
+  module?: string,
+  options?: { configOnly?: boolean; action?: string }
+): Promise<{
+  ok: boolean;
+  items: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  configModules?: string[];
+}> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (module) params.set("module", module);
+  if (options?.action) params.set("action", options.action);
+  if (options?.configOnly) params.set("configOnly", "1");
   return fetchApi(`/api/admin/platform/audits?${params}`);
+}
+
+export type BusinessSettingValueType = "string" | "number" | "boolean" | "json";
+
+export type EffectiveBusinessSetting = {
+  id: number | null;
+  module: string;
+  settingKey: string;
+  value: unknown;
+  rawValue: string;
+  valueType: BusinessSettingValueType;
+  description: string | null;
+  category: string | null;
+  isEditable: boolean;
+  source: "database" | "constant";
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export async function listBusinessSettings(filters?: {
+  module?: string;
+  category?: string;
+}): Promise<{ ok: boolean; settings: EffectiveBusinessSetting[]; modules: string[] }> {
+  const params = new URLSearchParams();
+  if (filters?.module) params.set("module", filters.module);
+  if (filters?.category) params.set("category", filters.category);
+  const q = params.toString();
+  return fetchApi(`/api/admin/platform/business-settings${q ? `?${q}` : ""}`);
+}
+
+export async function upsertBusinessSetting(body: {
+  module: string;
+  settingKey: string;
+  value: unknown;
+  valueType?: BusinessSettingValueType;
+  description?: string | null;
+  category?: string | null;
+}): Promise<{ ok: boolean; setting: EffectiveBusinessSetting }> {
+  return fetchApi("/api/admin/platform/business-settings", {
+    method: "PUT",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function resetBusinessSetting(
+  module: string,
+  key: string
+): Promise<{ ok: boolean; setting: EffectiveBusinessSetting; message?: string }> {
+  return fetchApi(
+    `/api/admin/platform/business-settings/${encodeURIComponent(module)}/${encodeURIComponent(key)}/reset`,
+    { method: "POST" }
+  );
+}
+
+export type SubscriptionPlanCatalogItem = {
+  plan: "FREE" | "GOLD" | "PLATINUM";
+  label: string;
+  tagline: string;
+  priceInr: number;
+  durationMonths: number;
+  opensPerMonth: number;
+  benefits: string[];
+  gstPercent: number;
+  displayOrder: number;
+  isActive: boolean;
+  popular: boolean;
+  canOpenOneStar?: boolean;
+  canOpenTwoStar?: boolean;
+  whoViewedMe?: boolean;
+  gstAmountInr?: number;
+  priceInrBeforeGst?: number;
+};
+
+export type SubscriptionPlatformSettings = {
+  goldPriceInr: number;
+  platinumPriceInr: number;
+  contactRevealPaise: number;
+  monthlyOpenQuota: number;
+  durationMonths: number;
+  gstPercent: number;
+  plans?: Array<Partial<SubscriptionPlanCatalogItem> & { plan: SubscriptionPlanCatalogItem["plan"] }>;
+};
+
+export async function listSubscriptionPlans(): Promise<{
+  ok: boolean;
+  platformSettings: SubscriptionPlatformSettings;
+  planCatalog: SubscriptionPlanCatalogItem[];
+}> {
+  return fetchApi("/api/admin/platform/subscription-plans");
+}
+
+export async function updateSubscriptionPlans(
+  body: Partial<SubscriptionPlatformSettings> & {
+    plans?: Array<Partial<SubscriptionPlanCatalogItem> & { plan: SubscriptionPlanCatalogItem["plan"] }>;
+  }
+): Promise<{
+  ok: boolean;
+  platformSettings: SubscriptionPlatformSettings;
+  planCatalog: SubscriptionPlanCatalogItem[];
+  message?: string;
+}> {
+  return fetchApi("/api/admin/platform/subscription-plans", {
+    method: "PUT",
+    body: JSON.stringify(body)
+  });
 }

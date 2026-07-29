@@ -211,7 +211,7 @@ export function MatrimonyRequestsListPage() {
       case "under_review":
         return "Showing profiles assigned and marked under review.";
       default:
-        return "Showing all matrimony profiles except drafts. Use tabs or summary cards to filter.";
+        return "One row per user (latest application). Historical submissions stay in the detail timeline.";
     }
   }, [activeQueue]);
 
@@ -219,7 +219,7 @@ export function MatrimonyRequestsListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-slate-600">
-          Review submitted profiles, verify documents, and manage approvals.
+          One profile per user — open a row to see full application history and timeline.
         </p>
       </div>
 
@@ -260,7 +260,7 @@ export function MatrimonyRequestsListPage() {
         <div className="grid gap-3 lg:grid-cols-6">
           <input
             type="search"
-            placeholder="Name, mobile, profile ID…"
+            placeholder="Name, mobile, user ID, application ID, community…"
             className="lg:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
@@ -294,14 +294,31 @@ export function MatrimonyRequestsListPage() {
           >
             <option value="">All statuses</option>
             <option value="__pending__">Needs review (queue)</option>
-            <option value="SUBMITTED">Submitted</option>
+            <option value="SUBMITTED">Submitted / Pending</option>
             <option value="UNDER_REVIEW">Under review</option>
             <option value="RESUBMITTED">Resubmitted</option>
             <option value="DRAFT">Draft</option>
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
             <option value="CHANGES_REQUESTED">Changes requested</option>
-            <option value="SUSPENDED">Suspended</option>
+            <option value="SUSPENDED">Suspended / Blocked</option>
+          </select>
+          <select
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={filters.period ?? ""}
+            onChange={(e) =>
+              setFilters((f) => ({
+                ...f,
+                page: 1,
+                period: (e.target.value || undefined) as MatrimonyListFilters["period"],
+                submittedFrom: undefined
+              }))
+            }
+          >
+            <option value="">Any time</option>
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
           </select>
           <select
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -323,6 +340,17 @@ export function MatrimonyRequestsListPage() {
               setFilters((f) => ({ ...f, page: 1, district: e.target.value || undefined }))
             }
           />
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <input
+            type="text"
+            placeholder="Community"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={filters.community ?? ""}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, page: 1, community: e.target.value || undefined }))
+            }
+          />
           <input
             type="text"
             placeholder="Kulam"
@@ -332,40 +360,34 @@ export function MatrimonyRequestsListPage() {
               setFilters((f) => ({ ...f, page: 1, kulam: e.target.value || undefined }))
             }
           />
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <input
-            type="number"
-            placeholder="Age min"
+          <select
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            value={filters.ageMin ?? ""}
+            value={filters.subscriptionPlan ?? ""}
             onChange={(e) =>
               setFilters((f) => ({
                 ...f,
                 page: 1,
-                ageMin: e.target.value ? Number(e.target.value) : undefined
+                subscriptionPlan: e.target.value || undefined
               }))
             }
-          />
+          >
+            <option value="">Any subscription</option>
+            <option value="FREE">FREE</option>
+            <option value="GOLD">GOLD</option>
+            <option value="PLATINUM">PLATINUM</option>
+          </select>
           <input
             type="number"
-            placeholder="Age max"
+            min={1}
+            placeholder="Min version #"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            value={filters.ageMax ?? ""}
+            value={filters.versionMin ?? ""}
             onChange={(e) =>
               setFilters((f) => ({
                 ...f,
                 page: 1,
-                ageMax: e.target.value ? Number(e.target.value) : undefined
+                versionMin: e.target.value ? Number(e.target.value) : undefined
               }))
-            }
-          />
-          <input
-            type="date"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            value={filters.submittedFrom ?? ""}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, page: 1, submittedFrom: e.target.value || undefined }))
             }
           />
           <input
@@ -484,14 +506,18 @@ export function MatrimonyRequestsListPage() {
                       aria-label="Select all"
                     />
                   </th>
-                  <th className="px-4 py-3">Profile</th>
-                  <th className="px-4 py-3">Age / Gender</th>
-                  <th className="hidden px-4 py-3 md:table-cell">District</th>
+                  <th className="px-4 py-3">Photo</th>
+                  <th className="px-4 py-3">User</th>
+                  <th className="hidden px-4 py-3 md:table-cell">Mobile</th>
+                  <th className="hidden px-4 py-3 lg:table-cell">Community</th>
                   <th className="hidden px-4 py-3 lg:table-cell">Kulam</th>
-                  <th className="px-4 py-3">Submitted</th>
-                  <th className="px-4 py-3">Completion</th>
+                  <th className="hidden px-4 py-3 md:table-cell">District</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="hidden px-4 py-3 xl:table-cell">Reviewer</th>
+                  <th className="px-4 py-3">Version</th>
+                  <th className="hidden px-4 py-3 xl:table-cell">Submitted</th>
+                  <th className="hidden px-4 py-3 xl:table-cell">Updated</th>
+                  <th className="hidden px-4 py-3 2xl:table-cell">Decision</th>
+                  <th className="hidden px-4 py-3 xl:table-cell">Assigned</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -607,49 +633,62 @@ function RequestRow({
         />
       </td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          {row.profilePhotoUrl ? (
-            <img
-              src={row.profilePhotoUrl}
-              alt=""
-              loading="lazy"
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-xs text-slate-500">
-              —
-            </div>
-          )}
-          <div>
-            <p className="font-medium text-slate-900">{row.fullName}</p>
-            <p className="text-xs text-slate-500">ID #{row.userId}</p>
+        {row.profilePhotoUrl ? (
+          <img
+            src={row.profilePhotoUrl}
+            alt=""
+            loading="lazy"
+            className="h-10 w-10 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-xs text-slate-500">
+            —
           </div>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <p className="font-medium text-slate-900">{row.fullName}</p>
+        <p className="text-xs text-slate-500">
+          User #{row.userId} · App #{row.id}
+        </p>
+      </td>
+      <td className="hidden px-4 py-3 md:table-cell text-slate-700">{row.mobile || "—"}</td>
+      <td className="hidden max-w-[100px] truncate px-4 py-3 lg:table-cell">
+        {row.community || "—"}
+      </td>
+      <td className="hidden max-w-[100px] truncate px-4 py-3 lg:table-cell">{row.kulam || "—"}</td>
+      <td className="hidden px-4 py-3 md:table-cell">{row.district || "—"}</td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap items-center gap-1">
+          <WorkflowBadge status={row.workflowStatus} />
+          {row.isCurrent !== false ? (
+            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-800">
+              Current
+            </span>
+          ) : null}
+          {row.subscriptionPlan ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+              {row.subscriptionPlan}
+            </span>
+          ) : null}
         </div>
       </td>
       <td className="px-4 py-3 text-slate-700">
-        {row.age ?? "—"} · {row.gender ?? "—"}
+        v{row.applicationVersion ?? 1}
+        {(row.applicationCount ?? 1) > 1 ? (
+          <span className="block text-[10px] text-slate-500">
+            of {row.applicationCount} apps
+          </span>
+        ) : null}
       </td>
-      <td className="hidden px-4 py-3 md:table-cell">{row.district || "—"}</td>
-      <td className="hidden max-w-[120px] truncate px-4 py-3 lg:table-cell">{row.kulam || "—"}</td>
-      <td className="px-4 py-3 text-slate-600">
+      <td className="hidden px-4 py-3 text-slate-600 xl:table-cell">
         {new Date(row.submittedAt).toLocaleDateString()}
       </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-16 overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full bg-primary"
-              style={{ width: `${row.profileCompletion}%` }}
-            />
-          </div>
-          <span className="text-xs">{row.profileCompletion}%</span>
-        </div>
+      <td className="hidden px-4 py-3 text-slate-600 xl:table-cell">
+        {new Date(row.updatedAt).toLocaleDateString()}
       </td>
-      <td className="px-4 py-3">
-        <WorkflowBadge status={row.workflowStatus} />
-        {row.verificationComplete && (
-          <span className="ml-1 text-xs text-emerald-600">✓ verified</span>
-        )}
+      <td className="hidden max-w-[140px] truncate px-4 py-3 text-xs text-slate-600 2xl:table-cell">
+        {row.adminDecision || "—"}
       </td>
       <td className="hidden px-4 py-3 text-xs text-slate-600 xl:table-cell">
         {row.assignedReviewer ?? adminEmail ?? "—"}

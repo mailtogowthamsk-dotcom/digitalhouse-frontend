@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   dismissAdminReport,
@@ -21,6 +22,7 @@ import {
 } from "../components/admin/AdminListControls";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 type ConfirmAction =
   | {
@@ -29,9 +31,27 @@ type ConfirmAction =
     }
   | null;
 
+function postTargetLink(post: { id: number; postType: string | null }, reportId: number) {
+  if (post.postType === "MARKETPLACE") {
+    return {
+      to: `/marketplace/${post.id}?reportId=${reportId}`,
+      label: "Open Listing"
+    };
+  }
+  return {
+    to: `/posts?postId=${post.id}&reportId=${reportId}`,
+    label: "Open Post"
+  };
+}
+
 export function ReportsPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { hasAction } = useAuth();
+  const canManage = hasAction("reports.manage");
+  const canWarn = hasAction("reports.warn");
+  const canSuspend = hasAction("reports.suspend");
+  const canEscalate = hasAction("reports.escalate");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>("PENDING");
@@ -170,29 +190,41 @@ export function ReportsPage() {
             >
               Review
             </button>
+            {r.kind === "POST" && r.post ? (
+              <Link
+                to={postTargetLink(r.post, r.id).to}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                {postTargetLink(r.post, r.id).label}
+              </Link>
+            ) : null}
             {r.status === "PENDING" || r.status === "ESCALATED" ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRemarks("");
-                    setConfirm({ type: "warn", item: r });
-                  }}
-                  className="text-sm font-medium text-amber-700 hover:underline"
-                >
-                  Warn
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRemarks("");
-                    setConfirm({ type: "suspend", item: r });
-                  }}
-                  className="text-sm font-medium text-red-600 hover:underline"
-                >
-                  Suspend
-                </button>
-                {r.status !== "ESCALATED" ? (
+                {canWarn ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRemarks("");
+                      setConfirm({ type: "warn", item: r });
+                    }}
+                    className="text-sm font-medium text-amber-700 hover:underline"
+                  >
+                    Warn
+                  </button>
+                ) : null}
+                {canSuspend ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRemarks("");
+                      setConfirm({ type: "suspend", item: r });
+                    }}
+                    className="text-sm font-medium text-red-600 hover:underline"
+                  >
+                    Suspend
+                  </button>
+                ) : null}
+                {canEscalate && r.status !== "ESCALATED" ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -204,33 +236,37 @@ export function ReportsPage() {
                     Escalate
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRemarks("");
-                    setConfirm({ type: "resolve", item: r });
-                  }}
-                  className="text-sm font-medium text-emerald-700 hover:underline"
-                >
-                  Resolve
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRemarks("");
-                    setConfirm({ type: "dismiss", item: r });
-                  }}
-                  className="text-sm font-medium text-slate-600 hover:underline"
-                >
-                  Dismiss
-                </button>
+                {canManage ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRemarks("");
+                        setConfirm({ type: "resolve", item: r });
+                      }}
+                      className="text-sm font-medium text-emerald-700 hover:underline"
+                    >
+                      Resolve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRemarks("");
+                        setConfirm({ type: "dismiss", item: r });
+                      }}
+                      className="text-sm font-medium text-slate-600 hover:underline"
+                    >
+                      Dismiss
+                    </button>
+                  </>
+                ) : null}
               </>
             ) : null}
           </div>
         )
       }
     ],
-    []
+    [canManage, canWarn, canSuspend, canEscalate]
   );
 
   return (
@@ -377,6 +413,14 @@ export function ReportsPage() {
                         {detail.postDescription}
                       </p>
                     ) : null}
+                    <Link
+                      to={postTargetLink(detail.post, detail.id).to}
+                      className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
+                    >
+                      {detail.post.postType === "MARKETPLACE"
+                        ? "Open in Marketplace"
+                        : "Open in Post Moderation"}
+                    </Link>
                   </div>
                 ) : null}
                 <div className="grid grid-cols-2 gap-3">
@@ -432,29 +476,33 @@ export function ReportsPage() {
                 </div>
                 {(detail.status === "PENDING" || detail.status === "ESCALATED") && (
                   <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                    <button
-                      type="button"
-                      className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800"
-                      onClick={() => {
-                        setViewing(null);
-                        setRemarks("");
-                        setConfirm({ type: "warn", item: detail });
-                      }}
-                    >
-                      Warn user
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700"
-                      onClick={() => {
-                        setViewing(null);
-                        setRemarks("");
-                        setConfirm({ type: "suspend", item: detail });
-                      }}
-                    >
-                      Suspend user
-                    </button>
-                    {detail.status !== "ESCALATED" ? (
+                    {canWarn ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800"
+                        onClick={() => {
+                          setViewing(null);
+                          setRemarks("");
+                          setConfirm({ type: "warn", item: detail });
+                        }}
+                      >
+                        Warn user
+                      </button>
+                    ) : null}
+                    {canSuspend ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700"
+                        onClick={() => {
+                          setViewing(null);
+                          setRemarks("");
+                          setConfirm({ type: "suspend", item: detail });
+                        }}
+                      >
+                        Suspend user
+                      </button>
+                    ) : null}
+                    {canEscalate && detail.status !== "ESCALATED" ? (
                       <button
                         type="button"
                         className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-800"
@@ -467,17 +515,32 @@ export function ReportsPage() {
                         Escalate
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
-                      onClick={() => {
-                        setViewing(null);
-                        setRemarks("");
-                        setConfirm({ type: "resolve", item: detail });
-                      }}
-                    >
-                      Resolve
-                    </button>
+                    {canManage ? (
+                      <>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
+                          onClick={() => {
+                            setViewing(null);
+                            setRemarks("");
+                            setConfirm({ type: "resolve", item: detail });
+                          }}
+                        >
+                          Resolve
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
+                          onClick={() => {
+                            setViewing(null);
+                            setRemarks("");
+                            setConfirm({ type: "dismiss", item: detail });
+                          }}
+                        >
+                          Dismiss
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 )}
               </div>

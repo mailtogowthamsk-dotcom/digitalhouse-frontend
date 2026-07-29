@@ -20,13 +20,26 @@ const TITLES: Record<string, string> = {
   "/support": "Help & Support",
   "/notifications": "Notifications",
   "/platform": "Platform Management",
+  "/system-scheduler": "System Scheduler",
   "/settings": "Settings & Roles"
 };
 
 function titleForPath(path: string): string {
   if (TITLES[path]) return TITLES[path];
+  if (path.startsWith("/system-scheduler/") && path !== "/system-scheduler") {
+    return "Scheduler Job Detail";
+  }
   if (path.startsWith("/matrimony-subscriptions/") && path !== "/matrimony-subscriptions") {
     return "Subscription detail";
+  }
+  if (path.startsWith("/job-portal/applications")) {
+    return "Job Applications";
+  }
+  if (path.startsWith("/job-portal/") && path !== "/job-portal") {
+    return "Job Detail";
+  }
+  if (path.startsWith("/marketplace/") && path !== "/marketplace") {
+    return "Marketplace Listing";
   }
   if (path.startsWith("/matrimony/") && !path.startsWith("/matrimony-subscriptions")) {
     return "Matrimony Review";

@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUsers, approveUser, rejectUser, requestRegistrationChanges, getUserById, type UserListItem, type RegistrationReview } from "../api/admin";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getUsers,
+  approveUser,
+  rejectUser,
+  requestRegistrationChanges,
+  softDeleteUser,
+  restoreUser,
+  hardDeleteUser,
+  type UserListItem
+} from "../api/admin";
 import { reactivateAdminUser, suspendAdminUser } from "../api/reportsAdmin";
 import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
@@ -18,6 +27,7 @@ import { useToast } from "../context/ToastContext";
 export function UserManagementPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
@@ -29,33 +39,22 @@ export function UserManagementPage() {
   const [genderFilter, setGenderFilter] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [viewingUser, setViewingUser] = useState<UserListItem | null>(null);
-  const [registrationReview, setRegistrationReview] = useState<RegistrationReview | null>(null);
+  const [hardConfirmText, setHardConfirmText] = useState("");
   const [confirmAction, setConfirmAction] = useState<{
-    type: "approve" | "reject" | "suspend" | "reactivate" | "requestChanges";
+    type:
+      | "approve"
+      | "reject"
+      | "suspend"
+      | "reactivate"
+      | "requestChanges"
+      | "softDelete"
+      | "hardDelete"
+      | "restore";
     user: UserListItem;
   } | null>(null);
 
   const isReviewable = (status: string) =>
     status === "PENDING" || status === "PENDING_REVIEW" || status === "CHANGES_REQUESTED";
-
-  const openUserDetail = async (user: UserListItem) => {
-    setViewingUser(user);
-    setRegistrationReview(null);
-    try {
-      const detail = await getUserById(user.id);
-      if (detail?.registrationReview) setRegistrationReview(detail.registrationReview);
-      if (detail?.user) {
-        setViewingUser({
-          ...user,
-          ...detail.user,
-          mobile: detail.user.mobile ?? user.mobile
-        });
-      }
-    } catch {
-      /* keep list row */
-    }
-  };
 
   useEffect(() => {
     const status = searchParams.get("status");
@@ -69,7 +68,7 @@ export function UserManagementPage() {
     setPage(1);
   }, [searchQ, statusFilter, loginSourceFilter, communityFilter, genderFilter, limit, sortBy, sortDir]);
 
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: [
       "admin-users",
       page,
@@ -92,109 +91,117 @@ export function UserManagementPage() {
     placeholderData: (prev) => prev
   });
 
-  const approveMutation = useMutation({
-    mutationFn: ({ userId, remarks }: { userId: number; remarks?: string }) =>
-      approveUser(userId, remarks),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
-      setConfirmAction(null);
-      addToast("User approved successfully.", "success");
-    },
-    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to approve", "error")
-  });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+  };
 
-  const rejectMutation = useMutation({
-    mutationFn: ({ userId, remarks }: { userId: number; remarks: string }) =>
-      rejectUser(userId, remarks),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+  const runConfirm = async () => {
+    if (!confirmAction) return;
+    const { type, user } = confirmAction;
+    try {
+      if (type === "approve") await approveUser(user.id);
+      if (type === "reject") {
+        const remarks = window.prompt("Rejection reason:")?.trim();
+        if (!remarks) return;
+        await rejectUser(user.id, remarks);
+      }
+      if (type === "requestChanges") {
+        const remarks = window.prompt("What should the user correct?")?.trim();
+        if (!remarks) return;
+        const fields: Array<"mobile" | "profilePhoto"> = [];
+        if (window.confirm("Request mobile correction?")) fields.push("mobile");
+        if (window.confirm("Request profile photo correction?")) fields.push("profilePhoto");
+        if (!fields.length) {
+          addToast("Select at least one field.", "error");
+          return;
+        }
+        await requestRegistrationChanges(user.id, remarks, fields);
+      }
+      if (type === "suspend") await suspendAdminUser(user.id);
+      if (type === "reactivate") await reactivateAdminUser(user.id);
+      if (type === "softDelete") {
+        const reason = window.prompt("Soft-delete reason (optional):")?.trim();
+        await softDeleteUser(user.id, reason || undefined);
+      }
+      if (type === "restore") await restoreUser(user.id);
+      if (type === "hardDelete") {
+        if (hardConfirmText !== "DELETE") {
+          addToast('Type DELETE to confirm.', "error");
+          return;
+        }
+        const reason = window.prompt("Hard-delete reason (optional):")?.trim();
+        await hardDeleteUser(user.id, reason || undefined);
+      }
+      addToast("Action completed.", "success");
       setConfirmAction(null);
-      addToast("User rejected.", "success");
-    },
-    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to reject", "error")
-  });
-
-  const requestChangesMutation = useMutation({
-    mutationFn: ({
-      userId,
-      remarks,
-      requestedFields
-    }: {
-      userId: number;
-      remarks: string;
-      requestedFields: Array<"mobile" | "profilePhoto">;
-    }) => requestRegistrationChanges(userId, remarks, requestedFields),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
-      setConfirmAction(null);
-      addToast("Changes requested.", "success");
-    },
-    onError: (err) =>
-      addToast(err instanceof Error ? err.message : "Failed to request changes", "error")
-  });
-
-  const suspendMutation = useMutation({
-    mutationFn: ({ userId }: { userId: number }) => suspendAdminUser(userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
-      setConfirmAction(null);
-      addToast("User suspended.", "success");
-    },
-    onError: (err) => addToast(err instanceof Error ? err.message : "Failed to suspend", "error")
-  });
-
-  const reactivateMutation = useMutation({
-    mutationFn: ({ userId }: { userId: number }) => reactivateAdminUser(userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
-      setConfirmAction(null);
-      addToast("User reactivated.", "success");
-    },
-    onError: (err) =>
-      addToast(err instanceof Error ? err.message : "Failed to reactivate", "error")
-  });
+      setHardConfirmText("");
+      invalidate();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Action failed", "error");
+    }
+  };
 
   const columns = useMemo(
     () => [
-      { key: "id", label: "ID", sortable: true },
+      {
+        key: "photo",
+        label: "Photo",
+        render: (r: UserListItem) =>
+          r.profilePhoto ? (
+            <img src={r.profilePhoto} alt="" className="h-9 w-9 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
+              {(r.fullName || "?").charAt(0)}
+            </div>
+          )
+      },
+      { key: "id", label: "User ID", sortable: true },
       {
         key: "fullName",
-        label: "Name",
+        label: "Full Name",
         sortable: true,
         render: (r: UserListItem) => (
           <div>
             <div className="font-medium text-slate-900">{r.fullName}</div>
-            {r.username ? <div className="text-xs text-slate-500">@{r.username}</div> : null}
           </div>
         )
       },
-      { key: "email", label: "Email", sortable: true },
       {
-        key: "loginSource",
-        label: "Login",
-        render: (r: UserListItem) => r.loginSource ?? "Existing Login"
+        key: "username",
+        label: "Username",
+        render: (r: UserListItem) => (r.username ? `@${r.username}` : "—")
       },
       { key: "mobile", label: "Mobile", render: (r: UserListItem) => r.mobile ?? "—" },
+      { key: "email", label: "Email", sortable: true },
+      { key: "gender", label: "Gender", render: (r: UserListItem) => r.gender ?? "—" },
+      { key: "district", label: "District", render: (r: UserListItem) => r.district ?? "—" },
+      {
+        key: "state",
+        label: "State",
+        render: () => "—"
+      },
+      {
+        key: "country",
+        label: "Country",
+        render: () => "—"
+      },
       {
         key: "community",
         label: "Community",
         render: (r: UserListItem) => r.community ?? "—"
       },
-      {
-        key: "gender",
-        label: "Gender",
-        render: (r: UserListItem) => r.gender ?? "—"
-      },
+      { key: "kulam", label: "Kulam", render: (r: UserListItem) => r.kulam ?? "—" },
       {
         key: "createdAt",
         label: "Registered",
         sortable: true,
         render: (r: UserListItem) => new Date(r.createdAt).toLocaleDateString()
+      },
+      {
+        key: "lastLogin",
+        label: "Last Login",
+        render: (r: UserListItem) => r.lastLoginProvider ?? "—"
       },
       {
         key: "status",
@@ -203,17 +210,47 @@ export function UserManagementPage() {
         render: (r: UserListItem) => <StatusBadge status={r.status} />
       },
       {
+        key: "verification",
+        label: "Verification",
+        render: (r: UserListItem) => (
+          <span className="text-xs text-slate-600">{r.emailVerified ? "Email ✓" : "Email —"}</span>
+        )
+      },
+      {
+        key: "subscription",
+        label: "Subscription",
+        render: (r: UserListItem) =>
+          r.subscriptionPlan ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              {r.subscriptionPlan}
+            </span>
+          ) : (
+            "—"
+          )
+      },
+      {
+        key: "role",
+        label: "Role",
+        render: (r: UserListItem) => r.communityRole || "USER"
+      },
+      {
         key: "actions",
         label: "Actions",
         render: (r: UserListItem) => (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void openUserDetail(r)}
-              className="text-sm font-medium text-primary hover:underline"
-            >
+          <div className="flex min-w-[12rem] flex-wrap items-center gap-2">
+            <Link to={`/users/${r.id}`} className="text-sm font-medium text-primary hover:underline">
               View
-            </button>
+            </Link>
+            <Link
+              to={`/users/${r.id}`}
+              className="text-sm font-medium text-slate-600 hover:underline"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(`/users/${r.id}`);
+              }}
+            >
+              Edit
+            </Link>
             {isReviewable(r.status) && (
               <>
                 <button
@@ -254,21 +291,51 @@ export function UserManagementPage() {
                 onClick={() => setConfirmAction({ type: "reactivate", user: r })}
                 className="text-sm font-medium text-emerald-600 hover:underline"
               >
-                Reactivate
+                Activate
               </button>
             )}
+            {r.status === "DELETED" ? (
+              <button
+                type="button"
+                onClick={() => setConfirmAction({ type: "restore", user: r })}
+                className="text-sm font-medium text-emerald-600 hover:underline"
+              >
+                Restore
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmAction({ type: "softDelete", user: r })}
+                className="text-sm font-medium text-slate-600 hover:underline"
+              >
+                Soft delete
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setHardConfirmText("");
+                setConfirmAction({ type: "hardDelete", user: r });
+              }}
+              className="text-sm font-medium text-red-700 hover:underline"
+            >
+              Hard delete
+            </button>
           </div>
         )
       }
     ],
-    []
+    [navigate]
   );
 
   return (
     <div>
-      {isFetching && !isLoading ? (
-        <p className="mb-3 text-sm text-slate-400">Refreshing…</p>
-      ) : null}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-slate-900">User Management</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Review registrations, manage accounts, and inspect full member profiles.
+        </p>
+      </div>
 
       <AdminListToolbar
         search={searchDraft}
@@ -278,30 +345,31 @@ export function UserManagementPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
         >
           <option value="">All statuses</option>
           <option value="PENDING">Pending</option>
-          <option value="CHANGES_REQUESTED">Changes requested</option>
-          <option value="APPROVED">Active</option>
-          <option value="SUSPENDED">Suspended</option>
-          <option value="REJECTED">Rejected</option>
           <option value="PENDING_REVIEW">Pending review</option>
+          <option value="CHANGES_REQUESTED">Changes requested</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="SUSPENDED">Suspended</option>
+          <option value="DELETED">Soft-deleted</option>
         </select>
         <select
           value={loginSourceFilter}
           onChange={(e) => setLoginSourceFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
         >
           <option value="">All login sources</option>
           <option value="google">Google</option>
           <option value="existing">Existing login</option>
-          <option value="both">Linked (both)</option>
+          <option value="both">Both</option>
         </select>
         <select
           value={genderFilter}
           onChange={(e) => setGenderFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
         >
           <option value="">All genders</option>
           <option value="Male">Male</option>
@@ -312,34 +380,33 @@ export function UserManagementPage() {
           value={communityFilter}
           onChange={(e) => setCommunityFilter(e.target.value)}
           placeholder="Community"
-          className="w-36 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
       </AdminListToolbar>
 
-      {isLoading && !data ? (
-        <AdminTableSkeleton rows={8} cols={6} />
-      ) : isError ? (
-        <AdminListError
-          message={(error as Error)?.message || "Failed to load users."}
-          onRetry={() => void refetch()}
-        />
+      {isError ? (
+        <AdminListError message={error instanceof Error ? error.message : "Failed to load"} onRetry={() => void refetch()} />
+      ) : isLoading && !data ? (
+        <AdminTableSkeleton rows={8} />
       ) : (
         <>
-          <DataTable
-            columns={columns as any}
-            data={(data?.users ?? []) as any}
-            keyExtractor={(r) => (r as UserListItem).id}
-            emptyMessage="No users match your filters."
-            sortKey={sortBy}
-            sortDir={sortDir}
-            onSortChange={(key, dir) => {
-              setSortBy(key);
-              setSortDir(dir);
-            }}
-          />
+          <div className="overflow-x-auto">
+            <DataTable
+              columns={columns as any}
+              data={(data?.users ?? []) as any}
+              keyExtractor={(r) => (r as UserListItem).id}
+              emptyMessage="No users found."
+              sortKey={sortBy}
+              sortDir={sortDir}
+              onSortChange={(key, dir) => {
+                setSortBy(key);
+                setSortDir(dir);
+              }}
+            />
+          </div>
           <AdminPagination
-            page={data?.page ?? page}
-            limit={data?.limit ?? limit}
+            page={page}
+            limit={limit}
             total={data?.total ?? 0}
             onPageChange={setPage}
             onLimitChange={setLimit}
@@ -347,219 +414,50 @@ export function UserManagementPage() {
         </>
       )}
 
-      {confirmAction?.type === "approve" && (
+      {confirmAction && (
         <ConfirmModal
           open
-          title="Approve User"
-          message={`Approve ${confirmAction.user.fullName}? They will be able to log in.`}
-          confirmLabel="Approve"
-          onConfirm={() => approveMutation.mutate({ userId: confirmAction.user.id })}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-      {confirmAction?.type === "reject" && (
-        <ConfirmModal
-          open
-          title="Reject User"
-          message="Reject this user? You must provide a reason (shown in the next step)."
-          confirmLabel="Continue"
-          variant="danger"
-          onConfirm={() => {
-            const reason = window.prompt("Reason for rejection (required):");
-            if (reason?.trim()) {
-              rejectMutation.mutate({
-                userId: confirmAction.user.id,
-                remarks: reason.trim()
-              });
-            }
+          title={
+            confirmAction.type === "hardDelete"
+              ? "Hard delete user?"
+              : confirmAction.type === "softDelete"
+                ? "Soft delete user?"
+                : `Confirm ${confirmAction.type}`
+          }
+          message={
+            confirmAction.type === "hardDelete"
+              ? `Permanently delete ${confirmAction.user.fullName} including all posts, media, and R2 files? This cannot be undone.`
+              : confirmAction.type === "softDelete"
+                ? `Soft-delete ${confirmAction.user.fullName}? They cannot sign in; data is retained.`
+                : `Perform ${confirmAction.type} on ${confirmAction.user.fullName}?`
+          }
+          confirmLabel={confirmAction.type === "hardDelete" ? "Permanently delete" : "Confirm"}
+          variant={
+            confirmAction.type === "hardDelete" ||
+            confirmAction.type === "softDelete" ||
+            confirmAction.type === "reject"
+              ? "danger"
+              : "default"
+          }
+          confirmDisabled={confirmAction.type === "hardDelete" && hardConfirmText !== "DELETE"}
+          onCancel={() => {
+            setConfirmAction(null);
+            setHardConfirmText("");
           }}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-      {confirmAction?.type === "requestChanges" && (
-        <ConfirmModal
-          open
-          title="Request Registration Changes"
-          message="Ask the user to update mobile and/or profile photo. Provide remarks shown in the app."
-          confirmLabel="Continue"
-          onConfirm={() => {
-            const wantMobile = window.confirm("Request mobile number update?");
-            const wantPhoto = window.confirm("Request profile photo update?");
-            const fields: Array<"mobile" | "profilePhoto"> = [];
-            if (wantMobile) fields.push("mobile");
-            if (wantPhoto) fields.push("profilePhoto");
-            if (fields.length === 0) {
-              addToast("Select at least one field.", "error");
-              return;
-            }
-            const remarks = window.prompt("Remarks for the user (required):");
-            if (remarks?.trim()) {
-              requestChangesMutation.mutate({
-                userId: confirmAction.user.id,
-                remarks: remarks.trim(),
-                requestedFields: fields
-              });
-            }
-          }}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-      {confirmAction?.type === "suspend" && (
-        <ConfirmModal
-          open
-          title="Suspend User"
-          message={`Suspend ${confirmAction.user.fullName}? They will not be able to sign in until reactivated.`}
-          confirmLabel="Suspend"
-          variant="danger"
-          confirmDisabled={suspendMutation.isPending}
-          onConfirm={() => suspendMutation.mutate({ userId: confirmAction.user.id })}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-      {confirmAction?.type === "reactivate" && (
-        <ConfirmModal
-          open
-          title="Reactivate User"
-          message={`Reactivate ${confirmAction.user.fullName}? They will be able to sign in again.`}
-          confirmLabel="Reactivate"
-          confirmDisabled={reactivateMutation.isPending}
-          onConfirm={() => reactivateMutation.mutate({ userId: confirmAction.user.id })}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-
-      {viewingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-semibold text-slate-900">User Profile</h3>
-            <dl className="space-y-2 text-sm">
-              <div>
-                <dt className="font-medium text-slate-500">User ID</dt>
-                <dd className="text-slate-900">{viewingUser.id}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-500">Full Name</dt>
-                <dd className="text-slate-900">{viewingUser.fullName}</dd>
-              </div>
-              {viewingUser.username ? (
-                <div>
-                  <dt className="font-medium text-slate-500">Username</dt>
-                  <dd className="text-slate-900">@{viewingUser.username}</dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="font-medium text-slate-500">Email</dt>
-                <dd className="text-slate-900">{viewingUser.email}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-500">Mobile (current)</dt>
-                <dd className="text-slate-900">
-                  {registrationReview?.mobile ?? viewingUser.mobile ?? "—"}
-                </dd>
-              </div>
-              {registrationReview?.pendingMobile ? (
-                <div>
-                  <dt className="font-medium text-amber-700">Mobile (updated / pending)</dt>
-                  <dd className="font-medium text-slate-900">{registrationReview.pendingMobile}</dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="font-medium text-slate-500">Community</dt>
-                <dd className="text-slate-900">{viewingUser.community ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-500">Registration Date</dt>
-                <dd className="text-slate-900">{new Date(viewingUser.createdAt).toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-500">Status</dt>
-                <dd>
-                  <StatusBadge status={viewingUser.status} />
-                </dd>
-              </div>
-            </dl>
-
-            {(registrationReview?.profilePhoto || registrationReview?.pendingProfilePhoto) && (
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase text-slate-500">
-                    Original photo
-                  </p>
-                  {registrationReview.profilePhoto ? (
-                    <img
-                      src={registrationReview.profilePhoto}
-                      alt="Original"
-                      className="h-28 w-28 rounded-full object-cover"
-                    />
-                  ) : (
-                    <p className="text-sm text-slate-400">None</p>
-                  )}
-                </div>
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase text-amber-700">
-                    Updated photo
-                  </p>
-                  {registrationReview.pendingProfilePhoto ? (
-                    <img
-                      src={registrationReview.pendingProfilePhoto}
-                      alt="Pending"
-                      className="h-28 w-28 rounded-full object-cover ring-2 ring-amber-400"
-                    />
-                  ) : (
-                    <p className="text-sm text-slate-400">No replacement</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 flex flex-wrap justify-end gap-2">
-              {isReviewable(viewingUser.status) ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmAction({ type: "approve", user: viewingUser });
-                      setViewingUser(null);
-                    }}
-                    className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmAction({ type: "requestChanges", user: viewingUser });
-                      setViewingUser(null);
-                    }}
-                    className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-white"
-                  >
-                    Request changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmAction({ type: "reject", user: viewingUser });
-                      setViewingUser(null);
-                    }}
-                    className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white"
-                  >
-                    Reject
-                  </button>
-                </>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => {
-                  setViewingUser(null);
-                  setRegistrationReview(null);
-                }}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+          onConfirm={() => void runConfirm()}
+        >
+          {confirmAction.type === "hardDelete" ? (
+            <label className="mt-3 block text-sm">
+              <span className="text-slate-600">Type DELETE to confirm</span>
+              <input
+                className="mt-1 w-full rounded-lg border border-red-300 px-3 py-2"
+                value={hardConfirmText}
+                onChange={(e) => setHardConfirmText(e.target.value)}
+                placeholder="DELETE"
+              />
+            </label>
+          ) : null}
+        </ConfirmModal>
       )}
     </div>
   );
