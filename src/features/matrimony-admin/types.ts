@@ -8,6 +8,12 @@ export type MatrimonyWorkflowStatus =
   | "CHANGES_REQUESTED"
   | "RESUBMITTED";
 
+export type MatrimonyAdminRequestType =
+  | "NEW_APPLICATION"
+  | "PROFILE_UPDATE"
+  | "RESUBMISSION"
+  | "CHANGE_REQUEST_RESPONSE";
+
 export type MatrimonyStats = {
   pendingRequests: number;
   approvedProfiles: number;
@@ -34,11 +40,23 @@ export type MatrimonyRequestListItem = {
   updatedAt: string;
   profileCompletion: number;
   workflowStatus: MatrimonyWorkflowStatus;
+  requestType?: MatrimonyAdminRequestType;
   rowStatus: string;
   assignedReviewer: string | null;
   reviewedBy?: string | null;
   verificationComplete: boolean;
   profilePhotoUrl: string | null;
+  applicantPhotoUrl?: string | null;
+  candidatePhotoUrl?: string | null;
+  candidateName?: string;
+  candidateGender?: string | null;
+  candidateAge?: number | null;
+  candidateDistrict?: string;
+  candidateOccupation?: string | null;
+  candidateMaritalStatus?: string | null;
+  fieldChangeCount?: number;
+  pendingSinceDays?: number;
+  registeredAt?: string | null;
   submittedForReview: boolean;
   adminDecision?: string;
   applicationVersion?: number;
@@ -61,6 +79,7 @@ export type MatrimonyListFilters = {
   sortBy?: string;
   sortDir?: "asc" | "desc";
   workflowStatus?: string;
+  requestType?: MatrimonyAdminRequestType | string;
   gender?: string;
   district?: string;
   kulam?: string;
@@ -75,6 +94,7 @@ export type MatrimonyListFilters = {
   search?: string;
   includeDrafts?: boolean;
   pendingReviewOnly?: boolean;
+  waitingOverDays?: number;
   subscriptionPlan?: string;
   versionMin?: number;
 };
@@ -113,6 +133,7 @@ export type MatrimonyRequestDetail = {
   id: number;
   userId: number;
   workflowStatus: MatrimonyWorkflowStatus;
+  requestType?: MatrimonyAdminRequestType;
   rowStatus: string;
   /** Approved-profile lifecycle (ACTIVE / PAUSED / CLOSED); null if not approved yet. */
   lifecycleStatus?: MatrimonyLifecycleStatus;
@@ -131,6 +152,34 @@ export type MatrimonyRequestDetail = {
   verification: VerificationState;
   suspended: boolean;
   user: Record<string, unknown>;
+  applicant?: {
+    id: number;
+    fullName: string | null;
+    photoUrl: string | null;
+    mobile: string | null;
+    email: string | null;
+    registeredAt: string | null;
+    community: string | null;
+    district: string | null;
+  };
+  candidate?: {
+    name: string;
+    photoUrl: string | null;
+    age: number | null;
+    gender: string | null;
+    district: string | null;
+    occupation: string | null;
+    kulam: string | null;
+    maritalStatus: string | null;
+    lookingFor: string | null;
+  };
+  reviewActors?: {
+    assignedReviewer: string | null;
+    reviewedBy: string | null;
+    changeRequestedBy: string | null;
+    changeRequestedAt: string | null;
+    reviewedAt: string | null;
+  };
   personal: Record<string, unknown> | null;
   community: Record<string, unknown> | null;
   family: Record<string, unknown> | null;
@@ -148,6 +197,8 @@ export type MatrimonyRequestDetail = {
   } | null;
   submissionSnapshot?: Record<string, unknown> | null;
   fieldChanges?: { field: string; oldValue: unknown; newValue: unknown }[];
+  approvedFieldChanges?: { field: string; oldValue: unknown; newValue: unknown }[];
+  fieldChangeCount?: number;
   resubmissionCount?: number;
   photoVerification?: {
     profileFor: string;

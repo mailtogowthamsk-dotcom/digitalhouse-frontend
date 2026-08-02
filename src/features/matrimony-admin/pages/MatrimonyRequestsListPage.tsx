@@ -10,10 +10,13 @@ import {
 import type { MatrimonyListFilters, MatrimonyRequestListItem } from "../types";
 import { SummaryCards, type MatrimonyQueueKey } from "../components/SummaryCards";
 import { WorkflowBadge } from "../components/WorkflowBadge";
+import { RequestTypeBadge } from "../components/RequestTypeBadge";
 import { TableSkeleton } from "../components/TableSkeleton";
 import { AdminPagination } from "../../../components/admin/AdminListControls";
 import { useToast } from "../../../context/ToastContext";
 import { useAuth } from "../../../context/AuthContext";
+import { formatTimeAgo } from "../constants";
+import type { MatrimonyAdminRequestType } from "../types";
 
 const QUEUE_TABS: { key: MatrimonyQueueKey; label: string }[] = [
   { key: "all", label: "All profiles" },
@@ -305,6 +308,39 @@ export function MatrimonyRequestsListPage() {
           </select>
           <select
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={filters.requestType ?? ""}
+            onChange={(e) =>
+              setFilters((f) => ({
+                ...f,
+                page: 1,
+                requestType: (e.target.value || undefined) as MatrimonyAdminRequestType | undefined
+              }))
+            }
+          >
+            <option value="">All request types</option>
+            <option value="NEW_APPLICATION">New application</option>
+            <option value="PROFILE_UPDATE">Profile update</option>
+            <option value="RESUBMISSION">Resubmission</option>
+            <option value="CHANGE_REQUEST_RESPONSE">Change request response</option>
+          </select>
+          <select
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={filters.waitingOverDays ?? ""}
+            onChange={(e) =>
+              setFilters((f) => ({
+                ...f,
+                page: 1,
+                waitingOverDays: e.target.value ? Number(e.target.value) : undefined,
+                pendingReviewOnly: e.target.value ? true : f.pendingReviewOnly
+              }))
+            }
+          >
+            <option value="">Any wait time</option>
+            <option value="3">Waiting &gt; 3 days</option>
+            <option value="7">Waiting &gt; 7 days</option>
+          </select>
+          <select
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
             value={filters.period ?? ""}
             onChange={(e) =>
               setFilters((f) => ({
@@ -316,7 +352,7 @@ export function MatrimonyRequestsListPage() {
             }
           >
             <option value="">Any time</option>
-            <option value="today">Today</option>
+            <option value="today">Today / Updated today</option>
             <option value="week">This week</option>
             <option value="month">This month</option>
           </select>
@@ -506,18 +542,12 @@ export function MatrimonyRequestsListPage() {
                       aria-label="Select all"
                     />
                   </th>
-                  <th className="px-4 py-3">Photo</th>
-                  <th className="px-4 py-3">User</th>
+                  <th className="px-4 py-3">Type / Status</th>
+                  <th className="px-4 py-3">Applicant (account)</th>
+                  <th className="px-4 py-3">Candidate (matrimony)</th>
                   <th className="hidden px-4 py-3 md:table-cell">Mobile</th>
-                  <th className="hidden px-4 py-3 lg:table-cell">Community</th>
-                  <th className="hidden px-4 py-3 lg:table-cell">Kulam</th>
-                  <th className="hidden px-4 py-3 md:table-cell">District</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Version</th>
-                  <th className="hidden px-4 py-3 xl:table-cell">Submitted</th>
-                  <th className="hidden px-4 py-3 xl:table-cell">Updated</th>
-                  <th className="hidden px-4 py-3 2xl:table-cell">Decision</th>
-                  <th className="hidden px-4 py-3 xl:table-cell">Assigned</th>
+                  <th className="px-4 py-3">Submitted</th>
+                  <th className="hidden px-4 py-3 xl:table-cell">Version</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -617,6 +647,9 @@ function RequestRow({
   adminEmail: string | null;
 }) {
   const canAct = row.rowStatus === "PENDING";
+  const candidatePhoto = row.candidatePhotoUrl ?? row.profilePhotoUrl;
+  const applicantPhoto = row.applicantPhotoUrl;
+  const candidateName = row.candidateName ?? row.fullName;
   return (
     <tr
       className="cursor-pointer hover:bg-slate-50"
@@ -624,7 +657,7 @@ function RequestRow({
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
       tabIndex={0}
     >
-      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+      <td className="px-4 py-3 align-top" onClick={(e) => e.stopPropagation()}>
         <input
           type="checkbox"
           checked={selected}
@@ -632,68 +665,95 @@ function RequestRow({
           onChange={(e) => onSelect(e.target.checked)}
         />
       </td>
-      <td className="px-4 py-3">
-        {row.profilePhotoUrl ? (
-          <img
-            src={row.profilePhotoUrl}
-            alt=""
-            loading="lazy"
-            className="h-10 w-10 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-xs text-slate-500">
-            —
-          </div>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <p className="font-medium text-slate-900">{row.fullName}</p>
-        <p className="text-xs text-slate-500">
-          User #{row.userId} · App #{row.id}
-        </p>
-      </td>
-      <td className="hidden px-4 py-3 md:table-cell text-slate-700">{row.mobile || "—"}</td>
-      <td className="hidden max-w-[100px] truncate px-4 py-3 lg:table-cell">
-        {row.community || "—"}
-      </td>
-      <td className="hidden max-w-[100px] truncate px-4 py-3 lg:table-cell">{row.kulam || "—"}</td>
-      <td className="hidden px-4 py-3 md:table-cell">{row.district || "—"}</td>
-      <td className="px-4 py-3">
-        <div className="flex flex-wrap items-center gap-1">
+      <td className="px-4 py-3 align-top">
+        <div className="flex flex-wrap gap-1">
+          <RequestTypeBadge type={row.requestType} />
           <WorkflowBadge status={row.workflowStatus} />
-          {row.isCurrent !== false ? (
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-800">
-              Current
-            </span>
-          ) : null}
-          {row.subscriptionPlan ? (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-              {row.subscriptionPlan}
-            </span>
-          ) : null}
         </div>
-      </td>
-      <td className="px-4 py-3 text-slate-700">
-        v{row.applicationVersion ?? 1}
-        {(row.applicationCount ?? 1) > 1 ? (
-          <span className="block text-[10px] text-slate-500">
-            of {row.applicationCount} apps
-          </span>
+        {(row.fieldChangeCount ?? 0) > 0 ? (
+          <p className="mt-1 text-[11px] font-semibold text-amber-800">
+            {row.fieldChangeCount} fields changed
+          </p>
+        ) : row.requestType === "NEW_APPLICATION" ? (
+          <p className="mt-1 text-[11px] text-slate-500">First submission</p>
         ) : null}
       </td>
-      <td className="hidden px-4 py-3 text-slate-600 xl:table-cell">
-        {new Date(row.submittedAt).toLocaleDateString()}
+      <td className="px-4 py-3 align-top">
+        <div className="flex gap-2">
+          {applicantPhoto ? (
+            <img
+              src={applicantPhoto}
+              alt=""
+              loading="lazy"
+              className="h-9 w-9 rounded-full object-cover ring-1 ring-slate-200"
+            />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-[10px] text-slate-500">
+              User
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="font-medium text-slate-900">{row.fullName}</p>
+            <p className="text-[11px] text-slate-500">
+              User #{row.userId}
+              {row.community ? ` · ${row.community}` : ""}
+            </p>
+            {row.registeredAt ? (
+              <p className="text-[10px] text-slate-400">
+                Joined {new Date(row.registeredAt).toLocaleDateString()}
+              </p>
+            ) : null}
+          </div>
+        </div>
       </td>
-      <td className="hidden px-4 py-3 text-slate-600 xl:table-cell">
-        {new Date(row.updatedAt).toLocaleDateString()}
+      <td className="px-4 py-3 align-top">
+        <div className="flex gap-2">
+          {candidatePhoto ? (
+            <img
+              src={candidatePhoto}
+              alt=""
+              loading="lazy"
+              className="h-12 w-12 rounded-lg object-cover ring-1 ring-slate-200"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-200 text-[10px] text-slate-500">
+              —
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-900">{candidateName}</p>
+            <p className="text-[11px] text-slate-600">
+              {[row.candidateGender ?? row.gender, row.candidateAge ?? row.age ? `${row.candidateAge ?? row.age}y` : null]
+                .filter(Boolean)
+                .join(" · ") || "—"}
+            </p>
+            <p className="text-[11px] text-slate-500">
+              {[row.candidateDistrict || row.district, row.kulam].filter(Boolean).join(" · ") || "—"}
+            </p>
+            {row.candidateOccupation ? (
+              <p className="truncate text-[10px] text-slate-400">{row.candidateOccupation}</p>
+            ) : null}
+          </div>
+        </div>
       </td>
-      <td className="hidden max-w-[140px] truncate px-4 py-3 text-xs text-slate-600 2xl:table-cell">
-        {row.adminDecision || "—"}
+      <td className="hidden px-4 py-3 align-top text-slate-700 md:table-cell">{row.mobile || "—"}</td>
+      <td className="px-4 py-3 align-top text-slate-600">
+        <p className="text-sm">{new Date(row.submittedAt).toLocaleString()}</p>
+        <p className="text-[11px] text-slate-500">{formatTimeAgo(row.submittedAt)}</p>
+        {(row.pendingSinceDays ?? 0) > 0 &&
+        ["SUBMITTED", "UNDER_REVIEW", "RESUBMITTED"].includes(row.workflowStatus) ? (
+          <p className="mt-0.5 text-[11px] font-medium text-amber-700">
+            Pending {row.pendingSinceDays}d
+          </p>
+        ) : null}
       </td>
-      <td className="hidden px-4 py-3 text-xs text-slate-600 xl:table-cell">
-        {row.assignedReviewer ?? adminEmail ?? "—"}
+      <td className="hidden px-4 py-3 align-top text-slate-700 xl:table-cell">
+        v{row.applicationVersion ?? 1}
+        {(row.applicationCount ?? 1) > 1 ? (
+          <span className="block text-[10px] text-slate-500">of {row.applicationCount}</span>
+        ) : null}
       </td>
-      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+      <td className="px-4 py-3 align-top" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-wrap gap-1">
           <Link
             to={`/matrimony/${row.id}`}
@@ -711,6 +771,7 @@ function RequestRow({
             </button>
           )}
         </div>
+        <p className="mt-1 text-[10px] text-slate-400">{row.assignedReviewer ?? adminEmail ?? ""}</p>
       </td>
     </tr>
   );

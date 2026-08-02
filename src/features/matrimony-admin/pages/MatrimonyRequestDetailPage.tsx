@@ -14,6 +14,7 @@ import {
   getMatrimonyConfig
 } from "../api";
 import { WorkflowBadge } from "../components/WorkflowBadge";
+import { RequestTypeBadge } from "../components/RequestTypeBadge";
 import { MediaGallery } from "../components/MediaGallery";
 import { OwnerCandidateMediaCompare } from "../components/OwnerCandidateMediaCompare";
 import { DetailSection, fieldsFromRecord } from "../components/DetailSection";
@@ -21,12 +22,13 @@ import { VerificationPanel } from "../components/VerificationPanel";
 import { NotesPanel } from "../components/NotesPanel";
 import { AuditTimeline } from "../components/AuditTimeline";
 import { SubmissionCompare } from "../components/SubmissionCompare";
+import { FieldChangeViewer } from "../components/FieldChangeViewer";
 import {
   ApplicationHistoryPanel,
   CurrentApplicationCard,
   MatrimonyEventTimeline
 } from "../components/ApplicationHistory";
-import { MATRIMONY_FIELD_LABELS, VERIFICATION_LABELS } from "../constants";
+import { MATRIMONY_FIELD_LABELS, VERIFICATION_LABELS, formatTimeAgo } from "../constants";
 import { useToast } from "../../../context/ToastContext";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -161,11 +163,21 @@ export function MatrimonyRequestDetailPage() {
 
   const m = data.matrimonyPending ?? {};
   const u = data.user;
+  const applicant = data.applicant;
+  const candidate = data.candidate;
   const canModerate = data.rowStatus === "PENDING";
   const verificationKeys = Object.keys(VERIFICATION_LABELS);
   const verificationComplete = verificationKeys.every(
     (k) => data.verification?.[k]?.checked === true
   );
+  const candidateThumb =
+    candidate?.photoUrl ??
+    data.photoVerification?.matrimonyCandidatePhoto ??
+    null;
+  const applicantThumb =
+    applicant?.photoUrl ??
+    data.photoVerification?.accountOwnerPhoto ??
+    (typeof u.profilePhoto === "string" ? u.profilePhoto : null);
 
   return (
     <div className="pb-24">
@@ -173,93 +185,168 @@ export function MatrimonyRequestDetailPage() {
         ← Back to requests
       </Link>
 
-      <header className="mt-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:flex lg:gap-6">
-        {(() => {
-          const pv = (data as { photoVerification?: { matrimonyCandidatePhoto?: string; accountOwnerPhoto?: string } })
-            .photoVerification;
-          const thumb = pv?.matrimonyCandidatePhoto ?? pv?.accountOwnerPhoto ?? (u.profilePhoto as string);
-          return typeof thumb === "string" && thumb ? (
-          <img
-            src={thumb}
-            alt="Matrimony candidate"
-            className="h-28 w-28 shrink-0 rounded-xl object-cover"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
-            No photo
+      <header className="mt-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <div className="shrink-0">
+            {candidateThumb ? (
+              <img
+                src={candidateThumb}
+                alt="Matrimony candidate"
+                className="h-32 w-32 rounded-xl object-cover ring-2 ring-slate-100"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="flex h-32 w-32 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
+                No candidate photo
+              </div>
+            )}
+            <p className="mt-2 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Candidate
+            </p>
           </div>
-        );
-        })()}
-        <div className="mt-4 min-w-0 flex-1 lg:mt-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-bold text-slate-900">{String(u.fullName)}</h2>
-            <WorkflowBadge status={data.workflowStatus} />
-            {data.lifecycleStatus ? (
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  data.lifecycleStatus === "ACTIVE"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : data.lifecycleStatus === "PAUSED"
-                      ? "bg-amber-100 text-amber-900"
-                      : "bg-rose-100 text-rose-900"
-                }`}
-              >
-                Lifecycle: {data.lifecycleStatus}
-              </span>
-            ) : null}
-            {(data.applicationCount ?? 1) > 1 ? (
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                {data.applicationCount} applications
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1 text-sm text-slate-600">
-            User #{data.userId} · Application #{data.id} · Version {data.applicationVersion ?? 1}
-          </p>
-          {data.presence ? (
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl font-bold text-slate-900">
+                {candidate?.name ?? String(u.fullName)}
+              </h2>
+              <RequestTypeBadge type={data.requestType} />
+              <WorkflowBadge status={data.workflowStatus} />
+            </div>
             <p className="mt-1 text-sm text-slate-600">
-              {data.presence.online ? (
-                <span className="font-medium text-emerald-700">Online now</span>
-              ) : (
-                <>
-                  Last seen{" "}
-                  {data.presence.lastSeenAt
-                    ? new Date(data.presence.lastSeenAt).toLocaleString()
-                    : data.presence.label || "unknown"}
-                </>
-              )}
-              {data.presence.lastSeenVisibility
-                ? ` · Visibility: ${data.presence.lastSeenVisibility}`
-                : null}
+              {[candidate?.gender, candidate?.age != null ? `${candidate.age} yrs` : null, candidate?.district, candidate?.kulam]
+                .filter(Boolean)
+                .join(" · ") || "—"}
             </p>
-          ) : null}
-          <p className="mt-2 text-sm text-slate-500">
-            Submitted {new Date(data.submittedAt).toLocaleString()} · Updated{" "}
-            {new Date(data.updatedAt).toLocaleString()}
-          </p>
-          <p className="mt-1 text-sm text-slate-600">
-            Completion {data.profileCompletion}%
-            {data.assignedReviewer && ` · Reviewer: ${data.assignedReviewer}`}
-          </p>
-          <Link
-            to={`/users/${data.userId}`}
-            className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
-          >
-            Open user profile
-          </Link>
-          {!data.submittedForReview && data.workflowStatus !== "CHANGES_REQUESTED" && (
-            <p className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900">
-              Draft only — user has not submitted for approval yet.
-            </p>
-          )}
-          {data.changeRequest && (
-            <p className="mt-2 rounded-md bg-orange-50 px-2 py-1 text-xs text-orange-900">
-              Changes requested: {data.changeRequest.comment}
-            </p>
-          )}
+            <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <dt className="text-[11px] font-semibold uppercase text-slate-400">Request #</dt>
+                <dd className="font-medium text-slate-800">{data.id}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-semibold uppercase text-slate-400">Submitted</dt>
+                <dd className="text-slate-800">
+                  {new Date(data.submittedAt).toLocaleString()}
+                  <span className="ml-1 text-slate-500">({formatTimeAgo(data.submittedAt)})</span>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-semibold uppercase text-slate-400">Pending since</dt>
+                <dd className="text-slate-800">
+                  {data.pendingSinceDays != null ? `${data.pendingSinceDays} day(s)` : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-semibold uppercase text-slate-400">Fields changed</dt>
+                <dd className="font-semibold text-amber-800">
+                  {data.fieldChangeCount ?? data.approvedFieldChanges?.length ?? data.fieldChanges?.length ?? 0}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-semibold uppercase text-slate-400">Completion</dt>
+                <dd className="text-slate-800">{data.profileCompletion}%</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-semibold uppercase text-slate-400">Version</dt>
+                <dd className="text-slate-800">
+                  v{data.applicationVersion ?? 1}
+                  {(data.applicationCount ?? 1) > 1 ? ` of ${data.applicationCount}` : ""}
+                </dd>
+              </div>
+            </dl>
+            {data.changeRequest ? (
+              <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-950">
+                <p className="font-semibold">Previous change request</p>
+                <p className="mt-1">{data.changeRequest.comment}</p>
+                <p className="mt-1 text-xs text-orange-800">
+                  By {data.changeRequest.requestedBy} ·{" "}
+                  {new Date(data.changeRequest.requestedAt).toLocaleString()}
+                  {data.changeRequest.sections?.length
+                    ? ` · Sections: ${data.changeRequest.sections.join(", ")}`
+                    : ""}
+                </p>
+              </div>
+            ) : null}
+          </div>
         </div>
       </header>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            Applicant information (account owner)
+          </h3>
+          <div className="mt-3 flex gap-3">
+            {applicantThumb ? (
+              <img
+                src={applicantThumb}
+                alt="Applicant"
+                className="h-16 w-16 rounded-full object-cover ring-1 ring-slate-200"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-200 text-xs text-slate-500">
+                No photo
+              </div>
+            )}
+            <div className="min-w-0 text-sm">
+              <p className="text-lg font-semibold text-slate-900">
+                {applicant?.fullName ?? String(u.fullName)}
+              </p>
+              <p className="text-slate-600">User #{data.userId}</p>
+              <p className="text-slate-600">{applicant?.mobile ?? String(u.mobile ?? "—")}</p>
+              <p className="truncate text-slate-600">{applicant?.email ?? String(u.email ?? "—")}</p>
+              <p className="text-xs text-slate-500">
+                Joined{" "}
+                {applicant?.registeredAt
+                  ? new Date(applicant.registeredAt).toLocaleDateString()
+                  : u.createdAt
+                    ? new Date(String(u.createdAt)).toLocaleDateString()
+                    : "—"}
+              </p>
+              <Link
+                to={`/users/${data.userId}`}
+                className="mt-1 inline-block text-sm font-medium text-primary hover:underline"
+              >
+                Open user profile
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-5 shadow-sm">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-indigo-700">
+            Candidate profile (matrimony)
+          </h3>
+          <div className="mt-3 flex gap-3">
+            {candidateThumb ? (
+              <img
+                src={candidateThumb}
+                alt="Candidate"
+                className="h-16 w-16 rounded-lg object-cover ring-1 ring-indigo-200"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-indigo-100 text-xs text-indigo-600">
+                No photo
+              </div>
+            )}
+            <div className="min-w-0 text-sm text-slate-800">
+              <p className="text-lg font-semibold">{candidate?.name ?? "—"}</p>
+              <p>
+                {[candidate?.gender, candidate?.age != null ? `${candidate.age} yrs` : null]
+                  .filter(Boolean)
+                  .join(" · ") || "—"}
+              </p>
+              <p>{[candidate?.district, candidate?.kulam].filter(Boolean).join(" · ") || "—"}</p>
+              <p>{candidate?.occupation || "—"}</p>
+              <p className="text-xs text-slate-600">
+                Marital: {candidate?.maritalStatus || "—"}
+                {candidate?.lookingFor ? ` · For: ${candidate.lookingFor}` : ""}
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
 
       <div className="mt-6">
         <CurrentApplicationCard
@@ -287,16 +374,53 @@ export function MatrimonyRequestDetailPage() {
         <MatrimonyEventTimeline events={data.timeline ?? []} />
       </div>
 
-      {(data.submissionSnapshot || (data.fieldChanges as unknown[])?.length > 0) && (
+      {(data.approvedFieldChanges?.length ?? 0) > 0 ? (
         <div className="mt-6">
+          <FieldChangeViewer
+            title="Approved profile vs current submission"
+            subtitle="What changed since the last approved version"
+            fieldChanges={data.approvedFieldChanges ?? []}
+            labels={MATRIMONY_FIELD_LABELS}
+            previousLabel="Approved"
+            currentLabel="Submitted"
+          />
+        </div>
+      ) : null}
+
+      {(data.submissionSnapshot || (data.fieldChanges?.length ?? 0) > 0) && (
+        <div className="mt-6 space-y-4">
+          <FieldChangeViewer
+            title="Changes since last correction snapshot"
+            subtitle="Fields the user updated after changes were requested"
+            fieldChanges={data.fieldChanges ?? []}
+            labels={MATRIMONY_FIELD_LABELS}
+            previousLabel="Before resubmit"
+            currentLabel="Resubmitted"
+            emptyMessage="No snapshot field diffs (may be first submission)."
+          />
           <SubmissionCompare
             previous={data.submissionSnapshot as Record<string, unknown> | null}
             current={(data.matrimonyPending as Record<string, unknown>) ?? null}
-            fieldChanges={(data.fieldChanges as { field: string; oldValue: unknown; newValue: unknown }[]) ?? []}
+            fieldChanges={data.fieldChanges ?? []}
             labels={MATRIMONY_FIELD_LABELS}
           />
         </div>
       )}
+
+      {data.matrimonyApproved && data.matrimonyPending ? (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Side-by-side: approved version vs submitted version
+          </h3>
+          <SubmissionCompare
+            previous={data.matrimonyApproved as Record<string, unknown>}
+            current={data.matrimonyPending as Record<string, unknown>}
+            fieldChanges={data.approvedFieldChanges ?? []}
+            labels={MATRIMONY_FIELD_LABELS}
+            title="Approved (live) vs current pending submission"
+          />
+        </div>
+      ) : null}
 
       <div className="sticky bottom-0 z-40 mt-6 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur">
         {canModerate && (

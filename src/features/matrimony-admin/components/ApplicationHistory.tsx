@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import type { MatrimonyApplicationVersion, MatrimonyTimelineEvent } from "../types";
 import { WorkflowBadge } from "./WorkflowBadge";
 import { WORKFLOW_LABELS } from "../constants";
@@ -199,42 +200,61 @@ export function ApplicationHistoryPanel({
 }
 
 export function MatrimonyEventTimeline({ events }: { events: MatrimonyTimelineEvent[] }) {
-  if (!events.length) {
-    return (
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Timeline</h3>
-        <p className="mt-3 text-sm text-slate-400">No timeline events yet.</p>
-      </section>
-    );
-  }
+  const [open, setOpen] = useState(false);
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Activity timeline
-      </h3>
-      <ol className="relative space-y-4 border-l border-slate-200 pl-6">
-        {[...events].reverse().map((e, idx) => (
-          <li key={`${e.at}-${e.type}-${idx}`} className="relative">
-            <span className="absolute -left-[1.625rem] top-1.5 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-white" />
-            <div className="text-sm font-medium text-slate-900">
-              {e.label}
-              {e.applicationVersion != null ? (
-                <span className="ml-2 text-xs font-normal text-slate-500">
-                  (v{e.applicationVersion})
-                </span>
-              ) : null}
-            </div>
-            <div className="text-xs text-slate-500">
-              {formatDate(e.at)}
-              {e.actor ? ` · ${e.actor}` : ""}
-            </div>
-            {e.meta ? <div className="mt-0.5 text-xs text-slate-600 break-words">{e.meta}</div> : null}
-          </li>
-        ))}
-      </ol>
-      <p className="mt-3 text-[10px] text-slate-400">
-        Status labels: {Object.values(WORKFLOW_LABELS).join(" · ")}
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Activity timeline
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {events.length === 0
+              ? "No timeline events yet"
+              : `${events.length} event${events.length === 1 ? "" : "s"}`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          {open ? "Hide" : "View"}
+        </button>
+      </div>
+      {open ? (
+        events.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-400">No timeline events yet.</p>
+        ) : (
+          <>
+            <ol className="relative mt-4 space-y-4 border-l border-slate-200 pl-6">
+              {[...events].reverse().map((e, idx) => (
+                <li key={`${e.at}-${e.type}-${idx}`} className="relative">
+                  <span className="absolute -left-[1.625rem] top-1.5 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-white" />
+                  <div className="text-sm font-medium text-slate-900">
+                    {e.label}
+                    {e.applicationVersion != null ? (
+                      <span className="ml-2 text-xs font-normal text-slate-500">
+                        (v{e.applicationVersion})
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {formatDate(e.at)}
+                    {e.actor ? ` · ${e.actor}` : ""}
+                  </div>
+                  {e.meta ? (
+                    <div className="mt-0.5 break-words text-xs text-slate-600">{e.meta}</div>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 text-[10px] text-slate-400">
+              Status labels: {Object.values(WORKFLOW_LABELS).join(" · ")}
+            </p>
+          </>
+        )
+      ) : null}
     </section>
   );
 }

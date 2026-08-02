@@ -10,12 +10,14 @@ export function SubmissionCompare({
   previous,
   current,
   fieldChanges,
-  labels
+  labels,
+  title = "Previous vs updated submission"
 }: {
   previous: Record<string, unknown> | null;
   current: Record<string, unknown> | null;
   fieldChanges: FieldChange[];
   labels: Record<string, string>;
+  title?: string;
 }) {
   if (!previous && fieldChanges.length === 0) {
     return <p className="text-sm text-slate-500">No previous submission snapshot yet.</p>;
@@ -28,7 +30,7 @@ export function SubmissionCompare({
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Previous vs updated submission
+        {title}
       </h3>
       {fieldChanges.length > 0 && (
         <p className="mb-3 text-sm text-slate-600">
