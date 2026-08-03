@@ -7,6 +7,15 @@
     <title>Digital House – Admin</title>
     <script>
       (function () {
+        // On production host only: rewrite absolute API URLs to same-origin paths
+        // so Apache can proxy /digitalhouse/backend → Node. Skip on localhost
+        // (Vite) so VITE_API_BASE can call the live server directly.
+        var host = (location.hostname || "").toLowerCase();
+        var onProdHost =
+          host === "infosensetechnologies.com" ||
+          host === "www.infosensetechnologies.com";
+        if (!onProdHost) return;
+
         var f = window.fetch.bind(window);
         window.fetch = function (input, init) {
           var url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
