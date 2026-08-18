@@ -284,6 +284,13 @@ export async function updateAdminUser(userId: number, payload: UpdateAdminUserPa
   });
 }
 
+export async function logoutUser(userId: number): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}/logout`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
 export async function softDeleteUser(userId: number, reason?: string): Promise<void> {
   await fetchApi(`/api/admin/users/${userId}/soft-delete`, {
     method: "POST",

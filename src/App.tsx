@@ -37,6 +37,12 @@ import { LegalDocumentHistoryPage } from "./features/legal-admin/LegalDocumentHi
 import { LegalDocumentComparePage } from "./features/legal-admin/LegalDocumentComparePage";
 import { PlatformManagementPage } from "./pages/PlatformManagementPage";
 import { SystemSchedulerPage, SystemSchedulerDetailPage } from "./pages/SystemSchedulerPage";
+import { AdvertisementsPage } from "./features/advertisements-admin/AdvertisementsPage";
+import { AdvertisementDetailPage } from "./features/advertisements-admin/AdvertisementDetailPage";
+import { AdvertisementCreatePage } from "./features/advertisements-admin/AdvertisementCreatePage";
+import { AdvertisementEditPage } from "./features/advertisements-admin/AdvertisementEditPage";
+import { AdvertisementReportsPage } from "./features/advertisements-admin/AdvertisementReportsPage";
+import { AdvertisementPricingPage } from "./features/advertisements-admin/AdvertisementPricingPage";
 import { AdminErrorBoundary } from "./components/AdminErrorBoundary";
 import "./index.css";
 
@@ -113,6 +119,30 @@ export default function App() {
                 <Route path="support" element={<M module="support"><SupportPage /></M>} />
                 <Route path="notifications" element={<M module="notifications"><NotificationsPage /></M>} />
                 <Route path="platform" element={<M module="platform"><PlatformManagementPage /></M>} />
+                <Route
+                  path="advertisements/pricing"
+                  element={<M module="advertisements"><AdvertisementPricingPage /></M>}
+                />
+                <Route
+                  path="advertisements/reports"
+                  element={<M module="advertisements"><AdvertisementReportsPage /></M>}
+                />
+                <Route
+                  path="advertisements/new"
+                  element={<M module="advertisements"><AdvertisementCreatePage /></M>}
+                />
+                <Route
+                  path="advertisements/:id/edit"
+                  element={<M module="advertisements"><AdvertisementEditPage /></M>}
+                />
+                <Route
+                  path="advertisements/:id"
+                  element={<M module="advertisements"><AdvertisementDetailPage /></M>}
+                />
+                <Route
+                  path="advertisements"
+                  element={<M module="advertisements"><AdvertisementsPage /></M>}
+                />
                 <Route
                   path="system-scheduler/:jobKey"
                   element={<M module="system_scheduler"><SystemSchedulerDetailPage /></M>}

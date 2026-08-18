@@ -6,6 +6,7 @@ import {
   approveUser,
   rejectUser,
   requestRegistrationChanges,
+  logoutUser,
   softDeleteUser,
   restoreUser,
   hardDeleteUser,
@@ -46,6 +47,7 @@ export function UserManagementPage() {
       | "reject"
       | "suspend"
       | "reactivate"
+      | "logout"
       | "requestChanges"
       | "softDelete"
       | "hardDelete"
@@ -120,6 +122,7 @@ export function UserManagementPage() {
       }
       if (type === "suspend") await suspendAdminUser(user.id);
       if (type === "reactivate") await reactivateAdminUser(user.id);
+      if (type === "logout") await logoutUser(user.id);
       if (type === "softDelete") {
         const reason = window.prompt("Soft-delete reason (optional):")?.trim();
         await softDeleteUser(user.id, reason || undefined);
@@ -133,7 +136,7 @@ export function UserManagementPage() {
         const reason = window.prompt("Hard-delete reason (optional):")?.trim();
         await hardDeleteUser(user.id, reason || undefined);
       }
-      addToast("Action completed.", "success");
+      addToast(type === "logout" ? "User signed out of the app." : "Action completed.", "success");
       setConfirmAction(null);
       setHardConfirmText("");
       invalidate();
@@ -275,6 +278,15 @@ export function UserManagementPage() {
                   Reject
                 </button>
               </>
+            )}
+            {r.status !== "DELETED" && (
+              <button
+                type="button"
+                onClick={() => setConfirmAction({ type: "logout", user: r })}
+                className="text-sm font-medium text-slate-700 hover:underline"
+              >
+                Log out
+              </button>
             )}
             {(r.status === "APPROVED" || r.status === "Active") && (
               <button
@@ -422,14 +434,18 @@ export function UserManagementPage() {
               ? "Hard delete user?"
               : confirmAction.type === "softDelete"
                 ? "Soft delete user?"
-                : `Confirm ${confirmAction.type}`
+                : confirmAction.type === "logout"
+                  ? "Log out of app?"
+                  : `Confirm ${confirmAction.type}`
           }
           message={
             confirmAction.type === "hardDelete"
               ? `Permanently delete ${confirmAction.user.fullName} including all posts, media, and R2 files? This cannot be undone.`
               : confirmAction.type === "softDelete"
                 ? `Soft-delete ${confirmAction.user.fullName}? They cannot sign in; data is retained.`
-                : `Perform ${confirmAction.type} on ${confirmAction.user.fullName}?`
+                : confirmAction.type === "logout"
+                  ? `Sign ${confirmAction.user.fullName} out of the app on all devices? They can log in again. The account is not suspended or deleted.`
+                  : `Perform ${confirmAction.type} on ${confirmAction.user.fullName}?`
           }
           confirmLabel={confirmAction.type === "hardDelete" ? "Permanently delete" : "Confirm"}
           variant={

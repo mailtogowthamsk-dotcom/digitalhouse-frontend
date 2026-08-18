@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getUserById,
   updateAdminUser,
+  logoutUser,
   softDeleteUser,
   restoreUser,
   hardDeleteUser,
@@ -23,7 +24,6 @@ import {
   yesNo
 } from "../components/admin/UserDetailCards";
 import { useToast } from "../context/ToastContext";
-import { useAuth } from "../context/AuthContext";
 import { PermissionGate } from "../components/PermissionGate";
 
 function Skeleton() {
@@ -55,6 +55,7 @@ export function UserDetailPage() {
           | "reject"
           | "suspend"
           | "reactivate"
+          | "logout"
           | "softDelete"
           | "hardDelete"
           | "restore"
@@ -142,6 +143,7 @@ export function UserDetailPage() {
       }
       if (confirm.type === "suspend") await suspendAdminUser(userId);
       if (confirm.type === "reactivate") await reactivateAdminUser(userId);
+      if (confirm.type === "logout") await logoutUser(userId);
       if (confirm.type === "softDelete") {
         const reason = window.prompt("Soft-delete reason (optional):")?.trim();
         await softDeleteUser(userId, reason || undefined);
@@ -160,7 +162,7 @@ export function UserDetailPage() {
         invalidate();
         return;
       }
-      addToast("Action completed.", "success");
+      addToast(confirm.type === "logout" ? "User signed out of the app." : "Action completed.", "success");
       setConfirm(null);
       setHardConfirmText("");
       invalidate();
@@ -288,6 +290,15 @@ export function UserDetailPage() {
               )}
             </PermissionGate>
             <PermissionGate action="users.suspend">
+              {user.status !== "DELETED" && (
+                <button
+                  type="button"
+                  onClick={() => setConfirm({ type: "logout" })}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Log out of app
+                </button>
+              )}
               {(user.status === "APPROVED" || user.status === "Active") && (
                 <button
                   type="button"
@@ -645,6 +656,17 @@ export function UserDetailPage() {
           ) : (
             <p className="mt-2 text-sm text-slate-400">No devices registered</p>
           )}
+          {user.status !== "DELETED" ? (
+            <PermissionGate action="users.suspend">
+              <button
+                type="button"
+                onClick={() => setConfirm({ type: "logout" })}
+                className="mt-3 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Log out of all devices
+              </button>
+            </PermissionGate>
+          ) : null}
         </DetailCard>
 
         <DetailCard title="App Settings" empty={!data.notificationPreferences}>
@@ -759,14 +781,18 @@ export function UserDetailPage() {
                 ? "Soft delete user?"
                 : confirm.type === "restore"
                   ? "Restore user?"
-                  : "Confirm action"
+                  : confirm.type === "logout"
+                    ? "Log out of app?"
+                    : "Confirm action"
           }
           message={
             confirm.type === "hardDelete"
               ? "This permanently deletes the user, all related records, and R2 media. This cannot be undone."
               : confirm.type === "softDelete"
                 ? "The account will be marked deleted and blocked from login. Data is retained."
-                : `Confirm ${confirm.type} for ${user.fullName}?`
+                : confirm.type === "logout"
+                  ? `Sign ${user.fullName} out of the app on all devices? They can log in again. The account is not suspended or deleted.`
+                  : `Confirm ${confirm.type} for ${user.fullName}?`
           }
           confirmLabel={confirm.type === "hardDelete" ? "Permanently delete" : "Confirm"}
           variant={

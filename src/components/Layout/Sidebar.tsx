@@ -25,6 +25,7 @@ const navItems: Array<{ to: string; label: string; icon: string; module: string 
   { to: "/support", label: "Help & Support", icon: "🆘", module: "support" },
   { to: "/notifications", label: "Notifications", icon: "🔔", module: "notifications" },
   { to: "/platform", label: "Platform Management", icon: "🎛️", module: "platform" },
+  { to: "/advertisements", label: "Advertisements", icon: "📣", module: "advertisements" },
   { to: "/system-scheduler", label: "System Scheduler", icon: "⏱️", module: "system_scheduler" },
   { to: "/settings", label: "Settings & Roles", icon: "⚙️", module: "settings" }
 ];

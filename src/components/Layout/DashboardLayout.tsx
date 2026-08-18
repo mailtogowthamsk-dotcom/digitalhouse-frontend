@@ -20,6 +20,7 @@ const TITLES: Record<string, string> = {
   "/support": "Help & Support",
   "/notifications": "Notifications",
   "/platform": "Platform Management",
+  "/advertisements": "Advertisements",
   "/system-scheduler": "System Scheduler",
   "/settings": "Settings & Roles",
   "/settings/legal": "Legal Documents"
@@ -50,6 +51,21 @@ function titleForPath(path: string): string {
   }
   if (path.startsWith("/marketplace/") && path !== "/marketplace") {
     return "Marketplace Listing";
+  }
+  if (path.startsWith("/advertisements/pricing")) {
+    return "Advertisement Pricing";
+  }
+  if (path.startsWith("/advertisements/reports")) {
+    return "Advertisement Reports";
+  }
+  if (path.startsWith("/advertisements/new")) {
+    return "Create Advertisement";
+  }
+  if (path.endsWith("/edit") && path.startsWith("/advertisements/")) {
+    return "Edit Advertisement";
+  }
+  if (path.startsWith("/advertisements/") && path !== "/advertisements") {
+    return "Advertisement Review";
   }
   if (path.startsWith("/matrimony/") && !path.startsWith("/matrimony-subscriptions")) {
     return "Matrimony Review";

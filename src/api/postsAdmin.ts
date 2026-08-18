@@ -9,6 +9,10 @@ export type PostModerationOverview = {
   todaysReports: number;
   highPriorityReports: number;
   allReports: number;
+  safetyReviewRequired?: number;
+  safetyBlocked?: number;
+  safetyFailed?: number;
+  safetyPending?: number;
 };
 
 export type AdminPostListItem = {
@@ -28,6 +32,8 @@ export type AdminPostListItem = {
   mediaUrl: string | null;
   thumbnailUrl: string | null;
   moderationStatus: string;
+  safetyDecision?: string;
+  safetyCategory?: string | null;
   moderationReason: string | null;
   reportCount: number;
   likeCount: number;
@@ -51,7 +57,17 @@ export type AdminPostDetail = {
     mediaUrl: string | null;
     thumbnailUrl: string | null;
     mediaGallery: Array<string | null>;
+    mediaType?: string;
     moderationStatus: string;
+    safetyDecision?: string;
+    safetyCategory?: string | null;
+    safetyConfidence?: number | null;
+    safetyModel?: string | null;
+    safetyModelVersion?: string | null;
+    safetyPolicyVersion?: string | null;
+    mediaVersion?: number;
+    moderatedMediaVersion?: number | null;
+    safetyFailureReason?: string | null;
     moderationReason: string | null;
     moderationNotes: string | null;
     moderatedBy: string | null;
@@ -90,6 +106,20 @@ export type AdminPostDetail = {
     action: string;
     adminEmail: string;
     note: string | null;
+    createdAt: string;
+  }>;
+  scans?: Array<{
+    id: number;
+    mediaVersion: number;
+    mediaType: string;
+    model: string;
+    modelVersion: string;
+    policyVersion: string;
+    status: string;
+    category: string;
+    confidence: number | null;
+    decision: string;
+    failureReason: string | null;
     createdAt: string;
   }>;
   hashtags: string[];
@@ -140,6 +170,20 @@ export async function softDeleteAdminPost(postId: number, payload?: { reason?: s
 
 export async function hardDeleteAdminPost(postId: number, payload?: { reason?: string; remarks?: string }) {
   return fetchApi(`/api/admin/posts/${postId}/hard-delete`, { method: "POST", body: JSON.stringify(payload ?? {}) });
+}
+
+export async function allowSafetyPost(
+  postId: number,
+  payload: { mediaVersion: number; remarks?: string }
+) {
+  return fetchApi(`/api/admin/posts/${postId}/safety-allow`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function rejectSafetyPost(
+  postId: number,
+  payload: { mediaVersion: number; reason?: string }
+) {
+  return fetchApi(`/api/admin/posts/${postId}/safety-reject`, { method: "POST", body: JSON.stringify(payload) });
 }
 
 export async function bulkModeratePosts(payload: {
