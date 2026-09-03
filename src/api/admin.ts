@@ -160,7 +160,7 @@ export async function rejectUser(userId: number, remarks: string): Promise<void>
 export async function requestRegistrationChanges(
   userId: number,
   remarks: string,
-  requestedFields: Array<"mobile" | "profilePhoto">
+  requestedFields: Array<"mobile" | "profilePhoto" | "referralCode">
 ): Promise<void> {
   await fetchApi(`/api/admin/users/${userId}/request-changes`, {
     method: "POST",
@@ -247,7 +247,69 @@ export type AdminUserDetail = {
   roles: Record<string, unknown>;
   timeline: Array<{ at: string; type: string; label: string; meta?: string | null }>;
   loginSource?: string;
+  referral?: {
+    registrationStatus: string;
+    currentStatus: string;
+    current: {
+      id: number;
+      status: string;
+      referrerUserId: number | null;
+      referredBy: string | null;
+      memberDisplayId: string | null;
+      referrerStatus: string | null;
+      referralCodeUsed: string | null;
+      requestedAt: string | null;
+      requestedByAdmin: string | null;
+      submittedAt: string | null;
+      verifiedAt: string | null;
+      verifiedByAdmin: string | null;
+      rejectedAt: string | null;
+      rejectedByAdmin: string | null;
+      adminNotes: string | null;
+    } | null;
+    history: Array<{
+      id: number;
+      status: string;
+      referrerUserId: number | null;
+      referredBy: string | null;
+      memberDisplayId: string | null;
+      referrerStatus: string | null;
+      referralCodeUsed: string | null;
+      submittedAt: string | null;
+      verifiedAt: string | null;
+      verifiedByAdmin: string | null;
+      rejectedAt: string | null;
+      adminNotes: string | null;
+    }>;
+    actions: {
+      canRequest: boolean;
+      canConfirm: boolean;
+      canRejectReferral: boolean;
+      viewReferrerUserId: number | null;
+    };
+  } | null;
 };
+
+export async function requestReferral(userId: number, note?: string): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}/referral/request`, {
+    method: "POST",
+    body: JSON.stringify({ note: note ?? null })
+  });
+}
+
+export async function confirmReferral(userId: number, note?: string): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}/referral/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ note: note ?? null })
+  });
+}
+
+export async function rejectReferral(userId: number, note?: string): Promise<void> {
+  await fetchApi(`/api/admin/users/${userId}/referral/reject`, {
+    method: "POST",
+    body: JSON.stringify({ note: note ?? null })
+  });
+}
 
 export async function getUserById(id: number): Promise<AdminUserDetail> {
   return fetchApi<AdminUserDetail>(`/api/admin/users/${id}`);

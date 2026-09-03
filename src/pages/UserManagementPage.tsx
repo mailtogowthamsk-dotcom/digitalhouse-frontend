@@ -24,6 +24,12 @@ import {
 } from "../components/admin/AdminListControls";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useToast } from "../context/ToastContext";
+import {
+  EMPTY_CHANGE_REQUEST_FORM,
+  RequestRegistrationChangesFields,
+  selectedChangeFields,
+  type RequestRegistrationChangesForm
+} from "../components/admin/RequestRegistrationChangesFields";
 
 export function UserManagementPage() {
   const queryClient = useQueryClient();
@@ -41,6 +47,7 @@ export function UserManagementPage() {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [hardConfirmText, setHardConfirmText] = useState("");
+  const [changeForm, setChangeForm] = useState<RequestRegistrationChangesForm>(EMPTY_CHANGE_REQUEST_FORM);
   const [confirmAction, setConfirmAction] = useState<{
     type:
       | "approve"
@@ -109,11 +116,12 @@ export function UserManagementPage() {
         await rejectUser(user.id, remarks);
       }
       if (type === "requestChanges") {
-        const remarks = window.prompt("What should the user correct?")?.trim();
-        if (!remarks) return;
-        const fields: Array<"mobile" | "profilePhoto"> = [];
-        if (window.confirm("Request mobile correction?")) fields.push("mobile");
-        if (window.confirm("Request profile photo correction?")) fields.push("profilePhoto");
+        const remarks = changeForm.remarks.trim();
+        const fields = selectedChangeFields(changeForm);
+        if (!remarks) {
+          addToast("Add a message for the applicant.", "error");
+          return;
+        }
         if (!fields.length) {
           addToast("Select at least one field.", "error");
           return;
@@ -265,7 +273,10 @@ export function UserManagementPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setConfirmAction({ type: "requestChanges", user: r })}
+                  onClick={() => {
+                    setChangeForm(EMPTY_CHANGE_REQUEST_FORM);
+                    setConfirmAction({ type: "requestChanges", user: r });
+                  }}
                   className="text-sm font-medium text-amber-600 hover:underline"
                 >
                   Request changes
@@ -434,8 +445,10 @@ export function UserManagementPage() {
               ? "Hard delete user?"
               : confirmAction.type === "softDelete"
                 ? "Soft delete user?"
-                : confirmAction.type === "logout"
+              : confirmAction.type === "logout"
                   ? "Log out of app?"
+                  : confirmAction.type === "requestChanges"
+                    ? "Request registration changes"
                   : `Confirm ${confirmAction.type}`
           }
           message={
@@ -445,9 +458,17 @@ export function UserManagementPage() {
                 ? `Soft-delete ${confirmAction.user.fullName}? They cannot sign in; data is retained.`
                 : confirmAction.type === "logout"
                   ? `Sign ${confirmAction.user.fullName} out of the app on all devices? They can log in again. The account is not suspended or deleted.`
+                  : confirmAction.type === "requestChanges"
+                    ? "The applicant stays pending. They will see a form for only the fields you select — including referral code if you tick it."
                   : `Perform ${confirmAction.type} on ${confirmAction.user.fullName}?`
           }
-          confirmLabel={confirmAction.type === "hardDelete" ? "Permanently delete" : "Confirm"}
+          confirmLabel={
+            confirmAction.type === "hardDelete"
+              ? "Permanently delete"
+              : confirmAction.type === "requestChanges"
+                ? "Send request"
+                : "Confirm"
+          }
           variant={
             confirmAction.type === "hardDelete" ||
             confirmAction.type === "softDelete" ||
@@ -472,6 +493,8 @@ export function UserManagementPage() {
                 placeholder="DELETE"
               />
             </label>
+          ) : confirmAction.type === "requestChanges" ? (
+            <RequestRegistrationChangesFields form={changeForm} onChange={setChangeForm} />
           ) : null}
         </ConfirmModal>
       )}

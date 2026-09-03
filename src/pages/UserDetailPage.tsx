@@ -11,6 +11,9 @@ import {
   approveUser,
   rejectUser,
   requestRegistrationChanges,
+  requestReferral,
+  confirmReferral,
+  rejectReferral,
   type UpdateAdminUserPayload
 } from "../api/admin";
 import { reactivateAdminUser, suspendAdminUser } from "../api/reportsAdmin";
@@ -25,6 +28,12 @@ import {
 } from "../components/admin/UserDetailCards";
 import { useToast } from "../context/ToastContext";
 import { PermissionGate } from "../components/PermissionGate";
+import {
+  EMPTY_CHANGE_REQUEST_FORM,
+  RequestRegistrationChangesFields,
+  selectedChangeFields,
+  type RequestRegistrationChangesForm
+} from "../components/admin/RequestRegistrationChangesFields";
 
 function Skeleton() {
   return (
@@ -59,10 +68,14 @@ export function UserDetailPage() {
           | "softDelete"
           | "hardDelete"
           | "restore"
-          | "requestChanges";
+          | "requestChanges"
+          | "requestReferral"
+          | "confirmReferral"
+          | "rejectReferral";
       }
   >(null);
   const [hardConfirmText, setHardConfirmText] = useState("");
+  const [changeForm, setChangeForm] = useState<RequestRegistrationChangesForm>(EMPTY_CHANGE_REQUEST_FORM);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-user-detail", userId],
@@ -130,16 +143,33 @@ export function UserDetailPage() {
         await rejectUser(userId, remarks);
       }
       if (confirm.type === "requestChanges") {
-        const remarks = window.prompt("What should the user correct?")?.trim();
-        if (!remarks) return;
-        const fields: Array<"mobile" | "profilePhoto"> = [];
-        if (window.confirm("Request mobile correction?")) fields.push("mobile");
-        if (window.confirm("Request profile photo correction?")) fields.push("profilePhoto");
+        const remarks = changeForm.remarks.trim();
+        const fields = selectedChangeFields(changeForm);
+        if (!remarks) {
+          addToast("Add a message for the applicant.", "error");
+          return;
+        }
         if (!fields.length) {
           addToast("Select at least one field.", "error");
           return;
         }
         await requestRegistrationChanges(userId, remarks, fields);
+      }
+      if (confirm.type === "requestReferral") {
+        const note =
+          window.prompt(
+            "Optional note for the applicant:",
+            "Please provide a referral code from an existing Digital House member known to you."
+          ) ?? undefined;
+        await requestReferral(userId, note?.trim() || undefined);
+      }
+      if (confirm.type === "confirmReferral") {
+        const note = window.prompt("Optional confirmation note:")?.trim();
+        await confirmReferral(userId, note || undefined);
+      }
+      if (confirm.type === "rejectReferral") {
+        const note = window.prompt("Optional rejection note:")?.trim();
+        await rejectReferral(userId, note || undefined);
       }
       if (confirm.type === "suspend") await suspendAdminUser(userId);
       if (confirm.type === "reactivate") await reactivateAdminUser(userId);
@@ -265,6 +295,40 @@ export function UserDetailPage() {
             <PermissionGate action="users.approve">
               {isReviewable && (
                 <>
+                  {data?.referral?.actions?.canRequest ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChangeForm({
+                          remarks:
+                            "Please provide a referral code from an existing Digital House member known to you.",
+                          fields: { mobile: false, profilePhoto: false, referralCode: true }
+                        });
+                        setConfirm({ type: "requestChanges" });
+                      }}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
+                    >
+                      Request Referral
+                    </button>
+                  ) : null}
+                  {data?.referral?.actions?.canConfirm ? (
+                    <button
+                      type="button"
+                      onClick={() => setConfirm({ type: "confirmReferral" })}
+                      className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white"
+                    >
+                      Confirm Referral
+                    </button>
+                  ) : null}
+                  {data?.referral?.actions?.canRejectReferral ? (
+                    <button
+                      type="button"
+                      onClick={() => setConfirm({ type: "rejectReferral" })}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-800"
+                    >
+                      Reject Referral
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setConfirm({ type: "approve" })}
@@ -274,7 +338,10 @@ export function UserDetailPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setConfirm({ type: "requestChanges" })}
+                    onClick={() => {
+                      setChangeForm(EMPTY_CHANGE_REQUEST_FORM);
+                      setConfirm({ type: "requestChanges" });
+                    }}
                     className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white"
                   >
                     Request changes
@@ -515,6 +582,47 @@ export function UserDetailPage() {
               }
             ]}
           />
+        </DetailCard>
+
+        <DetailCard title="Referral Information">
+          <FieldGrid
+            fields={[
+              { label: "Referral Status", value: data.referral?.currentStatus || "NOT_PROVIDED" },
+              {
+                label: "Referred By",
+                value: data.referral?.current?.referredBy || "Not provided"
+              },
+              { label: "Member ID", value: data.referral?.current?.memberDisplayId || "—" },
+              { label: "Referrer Status", value: data.referral?.current?.referrerStatus || "—" },
+              {
+                label: "Referral Code Used",
+                value: data.referral?.current?.referralCodeUsed || "—"
+              },
+              { label: "Submitted", value: formatDate(data.referral?.current?.submittedAt) },
+              { label: "Verified By", value: data.referral?.current?.verifiedByAdmin || "—" },
+              { label: "Verified At", value: formatDate(data.referral?.current?.verifiedAt) },
+              { label: "Admin Notes", value: data.referral?.current?.adminNotes || "—" }
+            ]}
+          />
+          {data.referral?.actions?.viewReferrerUserId ? (
+            <Link
+              to={`/users/${data.referral.actions.viewReferrerUserId}`}
+              className="mt-3 inline-flex rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              View Referrer
+            </Link>
+          ) : null}
+          {data.referral?.history && data.referral.history.length > 1 ? (
+            <ul className="mt-4 space-y-2 text-sm">
+              {data.referral.history.map((row) => (
+                <li key={row.id} className="rounded-lg bg-slate-50 px-3 py-2">
+                  <span className="font-medium">{row.referredBy || "—"}</span> · {row.status}
+                  {row.verifiedByAdmin ? ` · ${row.verifiedByAdmin}` : ""}
+                  {row.verifiedAt ? ` · ${formatDate(row.verifiedAt)}` : ""}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </DetailCard>
 
         <DetailCard title="Verification">
@@ -781,8 +889,16 @@ export function UserDetailPage() {
                 ? "Soft delete user?"
                 : confirm.type === "restore"
                   ? "Restore user?"
-                  : confirm.type === "logout"
-                    ? "Log out of app?"
+              : confirm.type === "logout"
+                ? "Log out of app?"
+                : confirm.type === "requestReferral"
+                  ? "Request referral?"
+                  : confirm.type === "requestChanges"
+                    ? "Request registration changes"
+                  : confirm.type === "confirmReferral"
+                    ? "Confirm referral?"
+                    : confirm.type === "rejectReferral"
+                      ? "Reject referral?"
                     : "Confirm action"
           }
           message={
@@ -792,9 +908,23 @@ export function UserDetailPage() {
                 ? "The account will be marked deleted and blocked from login. Data is retained."
                 : confirm.type === "logout"
                   ? `Sign ${user.fullName} out of the app on all devices? They can log in again. The account is not suspended or deleted.`
+                  : confirm.type === "requestReferral"
+                    ? "This does not reject the applicant. They stay pending and will be asked to submit a referral code from an existing member."
+                    : confirm.type === "requestChanges"
+                      ? "The applicant stays pending. They will see a form for only the fields you select."
+                    : confirm.type === "confirmReferral"
+                      ? "This confirms the referral only. You must still click Approve separately to grant login access."
+                      : confirm.type === "rejectReferral"
+                        ? "This rejects the referral only. Registration stays pending until you approve or reject the applicant."
                   : `Confirm ${confirm.type} for ${user.fullName}?`
           }
-          confirmLabel={confirm.type === "hardDelete" ? "Permanently delete" : "Confirm"}
+          confirmLabel={
+            confirm.type === "hardDelete"
+              ? "Permanently delete"
+              : confirm.type === "requestChanges"
+                ? "Send request"
+                : "Confirm"
+          }
           variant={
             confirm.type === "hardDelete" || confirm.type === "softDelete" || confirm.type === "reject"
               ? "danger"
@@ -817,6 +947,14 @@ export function UserDetailPage() {
                 placeholder="DELETE"
               />
             </label>
+          ) : confirm.type === "requestChanges" ? (
+            <RequestRegistrationChangesFields
+              form={changeForm}
+              onChange={setChangeForm}
+              disabledFields={{
+                referralCode: data.referral?.actions?.canRequest === false
+              }}
+            />
           ) : null}
         </ConfirmModal>
       )}
