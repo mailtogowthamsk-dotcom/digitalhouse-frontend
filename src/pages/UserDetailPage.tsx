@@ -518,7 +518,13 @@ export function UserDetailPage() {
               { label: "Age", value: user.age ?? "—" },
               { label: "Gender", value: user.gender || "—" },
               { label: "Marital Status", value: (personal?.maritalStatus as string) || "—" },
+              { label: "Father's Name", value: (personal?.fatherName as string) || "—" },
+              { label: "Address", value: (personal?.address as string) || "—" },
               { label: "Occupation", value: user.occupation || (personal?.occupation as string) || "—" },
+              {
+                label: "Work / Study Details",
+                value: (personal?.workStudyDetails as string) || "—"
+              },
               { label: "Company", value: user.company || "—" },
               { label: "Designation", value: user.jobTitle || "—" },
               { label: "Education", value: user.education || "—" },

@@ -43,6 +43,8 @@ import { AdvertisementCreatePage } from "./features/advertisements-admin/Adverti
 import { AdvertisementEditPage } from "./features/advertisements-admin/AdvertisementEditPage";
 import { AdvertisementReportsPage } from "./features/advertisements-admin/AdvertisementReportsPage";
 import { AdvertisementPricingPage } from "./features/advertisements-admin/AdvertisementPricingPage";
+import { InvoicesPage } from "./features/invoices-admin/InvoicesPage";
+import { InvoiceDetailPage } from "./features/invoices-admin/InvoiceDetailPage";
 import { AdminErrorBoundary } from "./components/AdminErrorBoundary";
 import "./index.css";
 
@@ -142,6 +144,14 @@ export default function App() {
                 <Route
                   path="advertisements"
                   element={<M module="advertisements"><AdvertisementsPage /></M>}
+                />
+                <Route
+                  path="invoices/:id"
+                  element={<M module="invoices"><InvoiceDetailPage /></M>}
+                />
+                <Route
+                  path="invoices"
+                  element={<M module="invoices"><InvoicesPage /></M>}
                 />
                 <Route
                   path="system-scheduler/:jobKey"

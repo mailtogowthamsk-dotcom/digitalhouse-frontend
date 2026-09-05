@@ -26,6 +26,7 @@ const navItems: Array<{ to: string; label: string; icon: string; module: string 
   { to: "/notifications", label: "Notifications", icon: "🔔", module: "notifications" },
   { to: "/platform", label: "Platform Management", icon: "🎛️", module: "platform" },
   { to: "/advertisements", label: "Advertisements", icon: "📣", module: "advertisements" },
+  { to: "/invoices", label: "Invoices", icon: "🧾", module: "invoices" },
   { to: "/system-scheduler", label: "System Scheduler", icon: "⏱️", module: "system_scheduler" },
   { to: "/settings", label: "Settings & Roles", icon: "⚙️", module: "settings" }
 ];
@@ -53,17 +54,26 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200 bg-slate-900 text-white">
       <div className="flex h-full flex-col">
-        <div className="flex h-16 flex-col justify-center border-b border-slate-700 px-6">
-          <div className="flex items-center">
-            <span className="text-lg font-bold">Digital House</span>
-            <span className="ml-2 text-xs text-slate-400">Admin</span>
-          </div>
-          {adminRole ? (
-            <div className="mt-0.5 truncate text-[11px] text-slate-400">
-              {ROLE_BADGE[adminRole] ?? adminRole}
-              {adminEmail ? ` · ${adminEmail}` : ""}
+        <div className="flex h-16 flex-col justify-center border-b border-slate-700 px-4">
+          <div className="flex items-center gap-2.5">
+            <img
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt="Vettuvagounder"
+              className="h-9 w-9 rounded-full object-cover ring-1 ring-slate-600"
+            />
+            <div className="min-w-0">
+              <div className="flex items-center">
+                <span className="truncate text-base font-bold">Digital House</span>
+                <span className="ml-2 shrink-0 text-xs text-slate-400">Admin</span>
+              </div>
+              {adminRole ? (
+                <div className="mt-0.5 truncate text-[11px] text-slate-400">
+                  {ROLE_BADGE[adminRole] ?? adminRole}
+                  {adminEmail ? ` · ${adminEmail}` : ""}
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
           {visibleItems.map((item) => (

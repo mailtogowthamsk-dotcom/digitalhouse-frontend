@@ -21,6 +21,7 @@ const TITLES: Record<string, string> = {
   "/notifications": "Notifications",
   "/platform": "Platform Management",
   "/advertisements": "Advertisements",
+  "/invoices": "Invoices",
   "/system-scheduler": "System Scheduler",
   "/settings": "Settings & Roles",
   "/settings/legal": "Legal Documents"
@@ -66,6 +67,9 @@ function titleForPath(path: string): string {
   }
   if (path.startsWith("/advertisements/") && path !== "/advertisements") {
     return "Advertisement Review";
+  }
+  if (path.startsWith("/invoices/") && path !== "/invoices") {
+    return "Invoice Detail";
   }
   if (path.startsWith("/matrimony/") && !path.startsWith("/matrimony-subscriptions")) {
     return "Matrimony Review";
