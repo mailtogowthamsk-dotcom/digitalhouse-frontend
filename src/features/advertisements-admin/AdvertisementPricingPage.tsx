@@ -75,7 +75,7 @@ export function AdvertisementPricingPage() {
             className="rounded-lg border px-3 py-2 text-sm"
             value={priceInr}
             onChange={(e) => setPriceInr(e.target.value)}
-            placeholder="Price ₹"
+            placeholder="Price ₹ (ex-GST)"
           />
           <button type="submit" className="rounded-lg bg-primary px-3 py-2 text-sm text-white">
             Add duration
@@ -89,7 +89,7 @@ export function AdvertisementPricingPage() {
             <tr>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Duration</th>
-              <th className="px-3 py-2">Price</th>
+              <th className="px-3 py-2">Price (ex-GST)</th>
               <th className="px-3 py-2">Version</th>
               <th className="px-3 py-2">Active</th>
               <th className="px-3 py-2">Refund on reject</th>
