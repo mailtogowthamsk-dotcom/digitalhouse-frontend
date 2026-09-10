@@ -13,6 +13,8 @@
         // (Vite) so VITE_API_BASE can call the live server directly.
         var host = (location.hostname || "").toLowerCase();
         var onProdHost =
+          host === "konguvettuvagounder.com" ||
+          host === "www.konguvettuvagounder.com" ||
           host === "infosensetechnologies.com" ||
           host === "www.infosensetechnologies.com";
         if (!onProdHost) return;
@@ -20,8 +22,9 @@
         var f = window.fetch.bind(window);
         window.fetch = function (input, init) {
           var url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
-          if (/^https?:\/\/infosensetechnologies\.com\//i.test(url)) {
-            url = url.replace(/^https?:\/\/infosensetechnologies\.com/i, "https://www.infosensetechnologies.com");
+          if (/konguvettuvagounder\.com\/digitalhouse\/backend/i.test(url)) {
+            url = url.replace(/^https?:\/\/(?:www\.)?konguvettuvagounder\.com/i, "");
+            if (!url.startsWith("/")) url = "/" + url;
           }
           if (/infosensetechnologies\.com\/digitalhouse\/backend/i.test(url)) {
             url = url.replace(/^https?:\/\/(?:www\.)?infosensetechnologies\.com/i, "");
