@@ -1,7 +1,7 @@
 # SPA + canonical host for admin (avoid www vs non-www CORS)
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /digitalhouse/admin/
+  RewriteBase /admin/
 
   # www → bare domain (same host as website + API)
   RewriteCond %{HTTP_HOST} ^www\.konguvettuvagounder\.com$ [NC]
@@ -10,5 +10,5 @@
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /digitalhouse/admin/index.html [L]
+  RewriteRule . /admin/index.html [L]
 </IfModule>

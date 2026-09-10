@@ -24,7 +24,7 @@ const apiProxy = {
 };
 
 export default defineConfig({
-  base: "/digitalhouse/admin/",
+  base: "/admin/",
   plugins: [
     react(),
     {
@@ -33,7 +33,7 @@ export default defineConfig({
         server.middlewares.use((req, res, next) => {
           if (req.url === "/favicon.ico") {
             res.statusCode = 302;
-            res.setHeader("Location", "/digitalhouse/admin/favicon.svg");
+            res.setHeader("Location", "/admin/favicon.svg");
             res.end();
             return;
           }
