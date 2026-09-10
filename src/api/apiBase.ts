@@ -1,16 +1,15 @@
 /**
  * API base from VITE_API_BASE (.env / .env.development).
- * Examples:
- *   https://www.infosensetechnologies.com/digitalhouse/backend
- *   http://localhost:4000
- * Fallback: same-origin /digitalhouse/backend (Vite/Apache proxy).
+ * Production (konguvettuvagounder.com nginx): https://konguvettuvagounder.com
+ * Local LAN backend: http://192.168.x.x:4000
+ * Fallback: same-origin (relative /api/... via nginx /api/ proxy).
  */
 function normalizeBase(base: string): string {
   return base.trim().replace(/\/+$/, "");
 }
 
 export const API_ROOT = normalizeBase(
-  (import.meta.env.VITE_API_BASE as string | undefined) || "/digitalhouse/backend"
+  (import.meta.env.VITE_API_BASE as string | undefined) || ""
 );
 
 if (import.meta.env.DEV) {
