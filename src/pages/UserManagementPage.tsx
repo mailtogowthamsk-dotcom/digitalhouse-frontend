@@ -160,7 +160,12 @@ export function UserManagementPage() {
         label: "Photo",
         render: (r: UserListItem) =>
           r.profilePhoto ? (
-            <img src={r.profilePhoto} alt="" className="h-9 w-9 rounded-full object-cover" />
+            <img
+              src={r.profilePhoto}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="h-9 w-9 rounded-full object-cover"
+            />
           ) : (
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
               {(r.fullName || "?").charAt(0)}
