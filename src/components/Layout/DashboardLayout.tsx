@@ -9,6 +9,7 @@ const TITLES: Record<string, string> = {
   "/matrimony-reports": "Matrimony Reports",
   "/matrimony-subscriptions": "Matrimony Subscriptions",
   "/business": "Business Approval",
+  "/business-benefits": "Member Benefits Approval",
   "/posts": "Posts Moderation",
   "/job-portal": "Job Portal",
   "/marketplace": "Marketplace",

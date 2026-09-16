@@ -124,7 +124,13 @@ export function UserDetailPage() {
   };
 
   const saveMut = useMutation({
-    mutationFn: () => updateAdminUser(userId, editForm),
+    mutationFn: () => {
+      const kulam = String(editForm.kulam ?? "").trim();
+      if (!kulam) {
+        throw new Error("Kulam is required.");
+      }
+      return updateAdminUser(userId, { ...editForm, kulam });
+    },
     onSuccess: () => {
       addToast("User updated.", "success");
       setEditing(false);
@@ -473,7 +479,7 @@ export function UserDetailPage() {
                 ["education", "Education"],
                 ["bloodGroup", "Blood group"],
                 ["community", "Community"],
-                ["kulam", "Kulam"],
+                ["kulam", "Kulam *"],
                 ["city", "City"],
                 ["district", "District"],
                 ["location", "Location"],
