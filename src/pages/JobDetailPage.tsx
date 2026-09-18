@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addAdminJobNote, getAdminJobDetail, updateAdminApplication, updateAdminJob } from "../api/jobsAdmin";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { StatusBadge } from "../components/StatusBadge";
 import { AdminListError, AdminTableSkeleton } from "../components/admin/AdminListControls";
 import { useToast } from "../context/ToastContext";
@@ -19,6 +20,13 @@ export function JobDetailPage() {
   const [note, setNote] = useState("");
   const [noteKind, setNoteKind] = useState<"internal" | "admin">("internal");
   const [applicationUpdates, setApplicationUpdates] = useState<Record<number, { status: string; adminNotes: string }>>({});
+  const [applicationConfirm, setApplicationConfirm] = useState<{
+    id: number;
+    status: string;
+    adminNotes: string;
+    applicantName: string;
+  } | null>(null);
+  const [applicationConfirmNote, setApplicationConfirmNote] = useState("");
 
   const detail = useQuery({
     queryKey: ["job-detail", jobId],
@@ -47,15 +55,40 @@ export function JobDetailPage() {
   });
 
   const updateApplicationMutation = useMutation({
-    mutationFn: ({ id, status, adminNotes }: { id: number; status: string; adminNotes: string }) =>
-      updateAdminApplication(id, { status, adminNotes }),
+    mutationFn: ({
+      id,
+      status,
+      adminNotes,
+      note
+    }: {
+      id: number;
+      status: string;
+      adminNotes: string;
+      note?: string;
+    }) => updateAdminApplication(id, { status, adminNotes, note: note?.trim() || undefined }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["job-detail", jobId] });
       queryClient.invalidateQueries({ queryKey: ["job-applications"] });
+      setApplicationConfirm(null);
+      setApplicationConfirmNote("");
       addToast("Application updated.", "success");
     },
     onError: (err) => addToast(err instanceof Error ? err.message : "Failed to update application", "error")
   });
+
+  const submitApplicationUpdate = (
+    payload: { id: number; status: string; adminNotes: string },
+    applicantName?: string
+  ) => {
+    if (payload.status === "REJECTED" || payload.status === "SELECTED") {
+      setApplicationConfirm({
+        ...payload,
+        applicantName: applicantName ?? `Application #${payload.id}`
+      });
+      return;
+    }
+    updateApplicationMutation.mutate(payload);
+  };
 
   const form = useMemo(() => {
     const job = detail.data?.job;
@@ -212,7 +245,16 @@ export function JobDetailPage() {
                           className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-60"
                         />
                         {canManage ? (
-                          <button type="button" onClick={() => updateApplicationMutation.mutate({ id: application.id, status: state.status, adminNotes: state.adminNotes })} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              submitApplicationUpdate(
+                                { id: application.id, status: state.status, adminNotes: state.adminNotes },
+                                application.applicantName
+                              )
+                            }
+                            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                          >
                             Update
                           </button>
                         ) : null}
@@ -286,6 +328,49 @@ export function JobDetailPage() {
           </section>
         </div>
       </div>
+
+      <ConfirmModal
+        open={Boolean(applicationConfirm)}
+        title={
+          applicationConfirm?.status === "REJECTED"
+            ? "Reject application?"
+            : applicationConfirm?.status === "SELECTED"
+              ? "Mark as selected?"
+              : "Confirm update"
+        }
+        message={
+          applicationConfirm
+            ? `Update ${applicationConfirm.applicantName} to ${applicationConfirm.status.replace(/_/g, " ").toLowerCase()}?`
+            : ""
+        }
+        confirmLabel={applicationConfirm?.status === "REJECTED" ? "Reject" : "Confirm"}
+        variant={applicationConfirm?.status === "REJECTED" ? "danger" : "default"}
+        confirmDisabled={updateApplicationMutation.isPending}
+        onCancel={() => {
+          if (updateApplicationMutation.isPending) return;
+          setApplicationConfirm(null);
+          setApplicationConfirmNote("");
+        }}
+        onConfirm={() => {
+          if (!applicationConfirm || updateApplicationMutation.isPending) return;
+          updateApplicationMutation.mutate({
+            id: applicationConfirm.id,
+            status: applicationConfirm.status,
+            adminNotes: applicationConfirm.adminNotes,
+            note: applicationConfirmNote.trim() || undefined
+          });
+        }}
+      >
+        <label className="mt-4 block text-sm font-medium text-slate-700">
+          Note (optional)
+          <input
+            value={applicationConfirmNote}
+            onChange={(e) => setApplicationConfirmNote(e.target.value)}
+            placeholder="Reason or note for audit log"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          />
+        </label>
+      </ConfirmModal>
     </div>
   );
 }

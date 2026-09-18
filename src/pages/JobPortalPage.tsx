@@ -17,6 +17,7 @@ import { DataTable } from "../components/DataTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { AdminListError, AdminPagination, AdminTableSkeleton } from "../components/admin/AdminListControls";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 type ActionType = "close" | "reopen" | "hide" | "restore" | "soft-delete" | "hard-delete";
 
@@ -32,6 +33,9 @@ const actionLabels: Record<ActionType, string> = {
 export function JobPortalPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { hasAction } = useAuth();
+  const canManage = hasAction("jobs.manage");
+  const canHardDelete = hasAction("jobs.delete_hard");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [status, setStatus] = useState<"active" | "closed" | "hidden" | "deleted" | "expired" | "all">("active");
@@ -123,45 +127,16 @@ export function JobPortalPage() {
         key: "actions",
         label: "Actions",
         render: (row: AdminJobItem) => (
-          <div className="flex min-w-[220px] flex-wrap gap-2">
-            <Link to={`/job-portal/${row.id}`} className="text-sm font-medium text-primary hover:underline">
-              View
-            </Link>
-            <Link to={`/job-portal/${row.id}?edit=1`} className="text-sm font-medium text-slate-700 hover:underline">
-              Edit
-            </Link>
-            <Link to={`/job-portal/applications?jobId=${row.id}`} className="text-sm font-medium text-slate-700 hover:underline">
-              Applications
-            </Link>
-            {row.jobStatus === "CLOSED" ? (
-              <button type="button" onClick={() => setConfirm({ type: "reopen", job: row })} className="text-sm font-medium text-emerald-700 hover:underline">
-                Reopen
-              </button>
-            ) : (
-              <button type="button" onClick={() => setConfirm({ type: "close", job: row })} className="text-sm font-medium text-amber-700 hover:underline">
-                Close
-              </button>
-            )}
-            {row.currentStatus === "HIDDEN" || row.currentStatus === "SOFT_DELETED" ? (
-              <button type="button" onClick={() => setConfirm({ type: "restore", job: row })} className="text-sm font-medium text-emerald-700 hover:underline">
-                Restore
-              </button>
-            ) : (
-              <button type="button" onClick={() => setConfirm({ type: "hide", job: row })} className="text-sm font-medium text-slate-700 hover:underline">
-                Hide
-              </button>
-            )}
-            <button type="button" onClick={() => setConfirm({ type: "soft-delete", job: row })} className="text-sm font-medium text-red-600 hover:underline">
-              Soft Delete
-            </button>
-            <button type="button" onClick={() => setConfirm({ type: "hard-delete", job: row })} className="text-sm font-medium text-red-700 hover:underline">
-              Permanent Delete
-            </button>
-          </div>
+          <JobRowActions
+            row={row}
+            canManage={canManage}
+            canHardDelete={canHardDelete}
+            onConfirm={(type) => setConfirm({ type, job: row })}
+          />
         )
       }
     ],
-    []
+    [canManage, canHardDelete]
   );
 
   const cards = overview.data?.cards;
@@ -218,6 +193,24 @@ export function JobPortalPage() {
             items={(overview.data?.topCategories ?? []).map((item) => ({
               primary: item.name,
               secondary: `${item.count} jobs`
+            }))}
+          />
+        </div>
+        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <SummaryList
+            title="Most Viewed Jobs"
+            items={(overview.data?.mostViewedJobs ?? []).map((item) => ({
+              primary: item.title,
+              secondary: `${item.company ?? "No company"} • ${item.viewCount} views`,
+              href: `/job-portal/${item.id}`
+            }))}
+          />
+          <SummaryList
+            title="Recent Applications"
+            items={(overview.data?.recentApplications ?? []).map((item) => ({
+              primary: item.applicantName,
+              secondary: `${item.jobTitle}${item.company ? ` • ${item.company}` : ""} • ${item.status.replace(/_/g, " ")}`,
+              href: `/job-portal/applications?jobId=${item.jobId}`
             }))}
           />
         </div>
@@ -294,12 +287,71 @@ export function JobPortalPage() {
   );
 }
 
+function JobRowActions({
+  row,
+  canManage,
+  canHardDelete,
+  onConfirm
+}: {
+  row: AdminJobItem;
+  canManage: boolean;
+  canHardDelete: boolean;
+  onConfirm: (type: ActionType) => void;
+}) {
+  const hasMore = canManage || canHardDelete;
+  return (
+    <div className="flex min-w-[200px] flex-wrap items-center gap-x-2 gap-y-1">
+      <Link to={`/job-portal/${row.id}`} className="text-sm font-medium text-primary hover:underline">
+        View
+      </Link>
+      <span className="text-slate-300">|</span>
+      <Link to={`/job-portal/applications?jobId=${row.id}`} className="text-sm font-medium text-primary hover:underline">
+        Applications
+      </Link>
+      <Link to={`/job-portal/${row.id}?edit=1`} className="text-sm font-medium text-slate-600 hover:underline">
+        Edit
+      </Link>
+      {hasMore ? (
+        <select
+          defaultValue=""
+          onChange={(e) => {
+            const value = e.target.value as ActionType | "";
+            e.target.value = "";
+            if (!value) return;
+            onConfirm(value);
+          }}
+          className="max-w-[120px] rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700"
+          aria-label={`More actions for job ${row.id}`}
+        >
+          <option value="">More…</option>
+          {canManage ? (
+            row.jobStatus === "CLOSED" ? (
+              <option value="reopen">Reopen</option>
+            ) : (
+              <option value="close">Close</option>
+            )
+          ) : null}
+          {canManage ? (
+            row.currentStatus === "HIDDEN" || row.currentStatus === "SOFT_DELETED" ? (
+              <option value="restore">Restore</option>
+            ) : (
+              <option value="hide">Hide</option>
+            )
+          ) : null}
+          {canManage ? <option value="soft-delete">Soft delete</option> : null}
+          {canHardDelete ? <option value="hard-delete">Permanent delete</option> : null}
+        </select>
+      ) : null}
+    </div>
+  );
+}
+
 function SummaryList({
   title,
   items
 }: {
   title: string;
-  items: Array<{ primary: string; secondary: string }>;
+  items: Array<{ primary: string; secondary: string; href?: string }>;
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -308,12 +360,27 @@ function SummaryList({
         {items.length === 0 ? (
           <p className="text-sm text-slate-500">No data yet.</p>
         ) : (
-          items.map((item, index) => (
-            <div key={`${item.primary}-${index}`} className="rounded-lg bg-white px-3 py-2">
-              <div className="text-sm font-medium text-slate-900">{item.primary}</div>
-              <div className="text-xs text-slate-500">{item.secondary}</div>
-            </div>
-          ))
+          items.map((item, index) => {
+            const body = (
+              <>
+                <div className="text-sm font-medium text-slate-900">{item.primary}</div>
+                <div className="text-xs text-slate-500">{item.secondary}</div>
+              </>
+            );
+            return item.href ? (
+              <Link
+                key={`${item.primary}-${index}`}
+                to={item.href}
+                className="block rounded-lg bg-white px-3 py-2 transition hover:bg-slate-50"
+              >
+                {body}
+              </Link>
+            ) : (
+              <div key={`${item.primary}-${index}`} className="rounded-lg bg-white px-3 py-2">
+                {body}
+              </div>
+            );
+          })
         )}
       </div>
     </div>

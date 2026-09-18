@@ -243,10 +243,12 @@ export async function listAdminApplications(
   page = 1,
   limit = 25,
   status = "all",
-  q?: string
+  q?: string,
+  jobId?: number
 ) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit), status });
   if (q?.trim()) params.set("q", q.trim());
+  if (jobId != null && Number.isFinite(jobId) && jobId > 0) params.set("jobId", String(jobId));
   return fetchApi<AdminApplicationsListResponse>(`/api/admin/job-applications?${params}`);
 }
 
