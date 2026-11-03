@@ -335,6 +335,8 @@ export type UpdateAdminUserPayload = {
   city?: string | null;
   district?: string | null;
   communityRole?: string | null;
+  fatherName?: string | null;
+  address?: string | null;
   profileVisibility?: "PUBLIC" | "PRIVATE";
   allowConnectionRequests?: boolean;
 };

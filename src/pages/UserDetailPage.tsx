@@ -117,6 +117,8 @@ export function UserDetailPage() {
       city: user.city ?? "",
       district: user.district ?? "",
       communityRole: user.communityRole ?? "",
+      fatherName: String((data?.profile?.personal as { fatherName?: string | null } | null)?.fatherName ?? ""),
+      address: String((data?.profile?.personal as { address?: string | null } | null)?.address ?? ""),
       profileVisibility: user.profileVisibility ?? "PUBLIC",
       allowConnectionRequests: user.allowConnectionRequests !== false
     });
@@ -484,7 +486,8 @@ export function UserDetailPage() {
                 ["district", "District"],
                 ["location", "Location"],
                 ["communityRole", "Community role"],
-                ["skills", "Skills"]
+                ["skills", "Skills"],
+                ["fatherName", "Father's name"]
               ] as const
             ).map(([key, label]) => (
               <label key={key} className="block text-sm">
@@ -496,6 +499,16 @@ export function UserDetailPage() {
                 />
               </label>
             ))}
+            <label className="block text-sm sm:col-span-2 lg:col-span-3">
+              <span className="text-xs font-medium text-slate-500">Address</span>
+              <textarea
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                rows={3}
+                maxLength={1000}
+                value={editForm.address ?? ""}
+                onChange={(e) => setEditForm((f) => ({ ...f, address: e.target.value }))}
+              />
+            </label>
           </div>
         </DetailCard>
       )}
