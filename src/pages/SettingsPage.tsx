@@ -111,7 +111,7 @@ export function SettingsPage() {
       {
         code: "MODERATOR" as AdminRole,
         title: "Moderator",
-        blurb: "Content & reports focus: posts, jobs, marketplace, helping hands, warn users."
+        blurb: "Assigned members: edit, approve, request changes, reject, suspend, log out, and soft-delete. Also registration desk, matrimony reports, helping hand, and help & support."
       }
     ],
     []

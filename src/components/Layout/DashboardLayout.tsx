@@ -5,6 +5,8 @@ import { Header } from "./Header";
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/users": "User Management",
+  "/registration-requests": "Registration Requests",
+  "/support-team": "Support Team",
   "/matrimony": "Matrimony Requests",
   "/matrimony-reports": "Matrimony Reports",
   "/matrimony-subscriptions": "Matrimony Subscriptions",
@@ -30,6 +32,9 @@ const TITLES: Record<string, string> = {
 
 function titleForPath(path: string): string {
   if (TITLES[path]) return TITLES[path];
+  if (path.startsWith("/registration-requests/") && path !== "/registration-requests") {
+    return "Registration Request";
+  }
   if (path.startsWith("/settings/legal/") && path.endsWith("/history")) {
     return "Legal Document History";
   }

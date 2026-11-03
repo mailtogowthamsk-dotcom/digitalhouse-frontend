@@ -1,10 +1,13 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { getRegistrationSummary } from "../../api/registrationDesk";
 
 const navItems: Array<{ to: string; label: string; icon: string; module: string }> = [
   { to: "/dashboard", label: "Dashboard", icon: "📊", module: "dashboard" },
   { to: "/users", label: "User Management", icon: "👥", module: "users" },
+  { to: "/registration-requests", label: "Registration Requests", icon: "📥", module: "registration_requests" },
+  { to: "/support-team", label: "Support Team", icon: "✉️", module: "registration_requests" },
   { to: "/matrimony", label: "Matrimony Requests", icon: "💍", module: "matrimony" },
   { to: "/matrimony-reports", label: "Matrimony Reports", icon: "🚩", module: "matrimony_reports" },
   {
@@ -46,6 +49,41 @@ export function Sidebar() {
     if (!permissionsReady) return [];
     return navItems.filter((item) => hasModule(item.module));
   }, [hasModule, permissionsReady]);
+  const showDeskBadge = permissionsReady && hasModule("registration_requests");
+  const [deskBadge, setDeskBadge] = useState(0);
+
+  useEffect(() => {
+    if (!showDeskBadge) return;
+    let timer = 0;
+    let cancelled = false;
+    const load = () => {
+      if (document.hidden) return;
+      void getRegistrationSummary()
+        .then((stats) => {
+          if (!cancelled) setDeskBadge(stats.badge);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    const arm = () => {
+      window.clearInterval(timer);
+      if (!document.hidden) timer = window.setInterval(load, 60_000);
+    };
+    arm();
+    const onVisibility = () => {
+      if (document.hidden) window.clearInterval(timer);
+      else {
+        load();
+        arm();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [showDeskBadge]);
 
   const handleLogout = () => {
     logout();
@@ -90,7 +128,12 @@ export function Sidebar() {
               }
             >
               <span>{item.icon}</span>
-              {item.label}
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              {item.to === "/registration-requests" && deskBadge > 0 ? (
+                <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-slate-900">
+                  {deskBadge > 99 ? "99+" : deskBadge}
+                </span>
+              ) : null}
             </NavLink>
           ))}
         </nav>

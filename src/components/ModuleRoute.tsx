@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { adminHomePath } from "../utils/adminHome";
 
 /**
  * Prevents deep-link access to modules the current admin cannot use.
@@ -23,10 +24,7 @@ export function ModuleRoute({
   }
 
   if (!hasModule(module)) {
-    if (module !== "dashboard" && hasModule("dashboard")) {
-      return <Navigate to="/dashboard" replace />;
-    }
-    return <Navigate to="/login" replace />;
+    return <Navigate to={adminHomePath(hasModule)} replace />;
   }
 
   return <>{children}</>;

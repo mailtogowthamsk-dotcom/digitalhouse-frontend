@@ -27,6 +27,7 @@ import {
   yesNo
 } from "../components/admin/UserDetailCards";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 import { PermissionGate } from "../components/PermissionGate";
 import {
   EMPTY_CHANGE_REQUEST_FORM,
@@ -54,6 +55,12 @@ export function UserDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { adminRole, hasAction } = useAuth();
+  const canLogout = hasAction("users.suspend");
+  const canSuspend = canLogout;
+  const canReactivate = canLogout && adminRole !== "MODERATOR";
+  const canSoftDelete = hasAction("users.delete");
+  const canDestroy = canSoftDelete && adminRole !== "MODERATOR";
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<UpdateAdminUserPayload>({});
   const [confirm, setConfirm] = useState<
@@ -364,53 +371,52 @@ export function UserDetailPage() {
                 </>
               )}
             </PermissionGate>
-            <PermissionGate action="users.suspend">
-              {user.status !== "DELETED" && (
-                <button
-                  type="button"
-                  onClick={() => setConfirm({ type: "logout" })}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Log out of app
-                </button>
-              )}
-              {(user.status === "APPROVED" || user.status === "Active") && (
-                <button
-                  type="button"
-                  onClick={() => setConfirm({ type: "suspend" })}
-                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800"
-                >
-                  Suspend
-                </button>
-              )}
-              {user.status === "SUSPENDED" && (
-                <button
-                  type="button"
-                  onClick={() => setConfirm({ type: "reactivate" })}
-                  className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
-                >
-                  Activate
-                </button>
-              )}
-            </PermissionGate>
-            <PermissionGate action="users.delete">
-              {user.status === "DELETED" ? (
-                <button
-                  type="button"
-                  onClick={() => setConfirm({ type: "restore" })}
-                  className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
-                >
-                  Restore
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirm({ type: "softDelete" })}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
-                >
-                  Soft delete
-                </button>
-              )}
+            {canLogout && user.status !== "DELETED" ? (
+              <button
+                type="button"
+                onClick={() => setConfirm({ type: "logout" })}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Log out of app
+              </button>
+            ) : null}
+            {canSuspend && (user.status === "APPROVED" || user.status === "Active") ? (
+              <button
+                type="button"
+                onClick={() => setConfirm({ type: "suspend" })}
+                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800"
+              >
+                Suspend
+              </button>
+            ) : null}
+            {canReactivate && user.status === "SUSPENDED" ? (
+              <button
+                type="button"
+                onClick={() => setConfirm({ type: "reactivate" })}
+                className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
+              >
+                Activate
+              </button>
+            ) : null}
+            {canDestroy && user.status === "DELETED" ? (
+              <button
+                type="button"
+                onClick={() => setConfirm({ type: "restore" })}
+                className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800"
+              >
+                Restore
+              </button>
+            ) : null}
+            {canSoftDelete && user.status !== "DELETED" ? (
+              <button
+                type="button"
+                onClick={() => setConfirm({ type: "softDelete" })}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
+              >
+                Soft delete
+              </button>
+            ) : null}
+            {canDestroy ? (
               <button
                 type="button"
                 onClick={() => {
@@ -421,7 +427,7 @@ export function UserDetailPage() {
               >
                 Hard delete
               </button>
-            </PermissionGate>
+            ) : null}
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -789,16 +795,14 @@ export function UserDetailPage() {
           ) : (
             <p className="mt-2 text-sm text-slate-400">No devices registered</p>
           )}
-          {user.status !== "DELETED" ? (
-            <PermissionGate action="users.suspend">
-              <button
-                type="button"
-                onClick={() => setConfirm({ type: "logout" })}
-                className="mt-3 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Log out of all devices
-              </button>
-            </PermissionGate>
+          {user.status !== "DELETED" && canLogout ? (
+            <button
+              type="button"
+              onClick={() => setConfirm({ type: "logout" })}
+              className="mt-3 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Log out of all devices
+            </button>
           ) : null}
         </DetailCard>
 

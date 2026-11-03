@@ -11,6 +11,9 @@ import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
 import { UserDetailPage } from "./pages/UserDetailPage";
+import { RegistrationRequestsPage } from "./pages/RegistrationRequestsPage";
+import { RegistrationRequestDetailPage } from "./pages/RegistrationRequestDetailPage";
+import { SupportTeamPage } from "./pages/SupportTeamPage";
 import { MatrimonyRequestsListPage } from "./features/matrimony-admin/pages/MatrimonyRequestsListPage";
 import { MatrimonyRequestDetailPage } from "./features/matrimony-admin/pages/MatrimonyRequestDetailPage";
 import { MatrimonyReportsListPage } from "./features/matrimony-admin/pages/MatrimonyReportsListPage";
@@ -81,6 +84,9 @@ export default function App() {
                 <Route path="dashboard" element={<M module="dashboard"><DashboardPage /></M>} />
                 <Route path="users" element={<M module="users"><UserManagementPage /></M>} />
                 <Route path="users/:id" element={<M module="users"><UserDetailPage /></M>} />
+                <Route path="registration-requests" element={<M module="registration_requests"><RegistrationRequestsPage /></M>} />
+                <Route path="registration-requests/:userId" element={<M module="registration_requests"><RegistrationRequestDetailPage /></M>} />
+                <Route path="support-team" element={<M module="registration_requests"><SupportTeamPage /></M>} />
                 <Route path="matrimony" element={<M module="matrimony"><MatrimonyRequestsListPage /></M>} />
                 <Route
                   path="matrimony-reports"

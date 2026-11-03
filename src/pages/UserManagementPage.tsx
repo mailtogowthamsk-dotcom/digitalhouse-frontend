@@ -23,6 +23,7 @@ import {
   AdminTableSkeleton
 } from "../components/admin/AdminListControls";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import {
   EMPTY_CHANGE_REQUEST_FORM,
@@ -34,6 +35,14 @@ import {
 export function UserManagementPage() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { adminRole, hasAction } = useAuth();
+  const canApprove = hasAction("users.approve");
+  const canEdit = hasAction("users.edit");
+  const canLogout = hasAction("users.suspend");
+  const canSuspend = canLogout;
+  const canReactivate = canLogout && adminRole !== "MODERATOR";
+  const canSoftDelete = hasAction("users.delete");
+  const canDestroy = canSoftDelete && adminRole !== "MODERATOR";
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [page, setPage] = useState(1);
@@ -257,17 +266,19 @@ export function UserManagementPage() {
             <Link to={`/users/${r.id}`} className="text-sm font-medium text-primary hover:underline">
               View
             </Link>
-            <Link
-              to={`/users/${r.id}`}
-              className="text-sm font-medium text-slate-600 hover:underline"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(`/users/${r.id}`);
-              }}
-            >
-              Edit
-            </Link>
-            {isReviewable(r.status) && (
+            {canEdit ? (
+              <Link
+                to={`/users/${r.id}`}
+                className="text-sm font-medium text-slate-600 hover:underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/users/${r.id}`);
+                }}
+              >
+                Edit
+              </Link>
+            ) : null}
+            {canApprove && isReviewable(r.status) && (
               <>
                 <button
                   type="button"
@@ -295,7 +306,7 @@ export function UserManagementPage() {
                 </button>
               </>
             )}
-            {r.status !== "DELETED" && (
+            {canLogout && r.status !== "DELETED" && (
               <button
                 type="button"
                 onClick={() => setConfirmAction({ type: "logout", user: r })}
@@ -304,7 +315,7 @@ export function UserManagementPage() {
                 Log out
               </button>
             )}
-            {(r.status === "APPROVED" || r.status === "Active") && (
+            {canSuspend && (r.status === "APPROVED" || r.status === "Active") && (
               <button
                 type="button"
                 onClick={() => setConfirmAction({ type: "suspend", user: r })}
@@ -313,7 +324,7 @@ export function UserManagementPage() {
                 Suspend
               </button>
             )}
-            {r.status === "SUSPENDED" && (
+            {canReactivate && r.status === "SUSPENDED" && (
               <button
                 type="button"
                 onClick={() => setConfirmAction({ type: "reactivate", user: r })}
@@ -322,7 +333,7 @@ export function UserManagementPage() {
                 Activate
               </button>
             )}
-            {r.status === "DELETED" ? (
+            {canDestroy && r.status === "DELETED" ? (
               <button
                 type="button"
                 onClick={() => setConfirmAction({ type: "restore", user: r })}
@@ -330,7 +341,7 @@ export function UserManagementPage() {
               >
                 Restore
               </button>
-            ) : (
+            ) : canSoftDelete && r.status !== "DELETED" ? (
               <button
                 type="button"
                 onClick={() => setConfirmAction({ type: "softDelete", user: r })}
@@ -338,22 +349,24 @@ export function UserManagementPage() {
               >
                 Soft delete
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setHardConfirmText("");
-                setConfirmAction({ type: "hardDelete", user: r });
-              }}
-              className="text-sm font-medium text-red-700 hover:underline"
-            >
-              Hard delete
-            </button>
+            ) : null}
+            {canDestroy ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setHardConfirmText("");
+                  setConfirmAction({ type: "hardDelete", user: r });
+                }}
+                className="text-sm font-medium text-red-700 hover:underline"
+              >
+                Hard delete
+              </button>
+            ) : null}
           </div>
         )
       }
     ],
-    [navigate]
+    [canApprove, canDestroy, canEdit, canLogout, canReactivate, canSoftDelete, canSuspend, navigate]
   );
 
   return (
@@ -361,7 +374,9 @@ export function UserManagementPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">User Management</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Review registrations, manage accounts, and inspect full member profiles.
+          {adminRole === "MODERATOR"
+            ? "Only members assigned to your support-team email are shown."
+            : "Review registrations, manage accounts, and inspect full member profiles."}
         </p>
       </div>
 

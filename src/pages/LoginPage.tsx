@@ -27,7 +27,7 @@ export function LoginPage() {
           : null;
       login(result.admin.email, role);
       addToast("Signed in successfully.", "success");
-      navigate("/dashboard", { replace: true });
+      navigate(role === "MODERATOR" ? "/users" : "/dashboard", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid credentials");
     } finally {
