@@ -89,6 +89,34 @@ export function RegistrationRequestDetailPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-slate-200 bg-white p-4">
           <h2 className="font-semibold text-slate-900">Applicant</h2>
+          <div className="mt-3 flex flex-wrap gap-4">
+            <div>
+              <p className="mb-1 text-xs text-slate-500">Current photo</p>
+              {request.profilePhoto ? (
+                <img
+                  src={request.profilePhoto}
+                  alt="Current profile"
+                  referrerPolicy="no-referrer"
+                  className="h-24 w-24 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+                  No photo
+                </div>
+              )}
+            </div>
+            {request.pendingProfilePhoto ? (
+              <div>
+                <p className="mb-1 text-xs font-medium text-amber-700">New upload (waiting for approval)</p>
+                <img
+                  src={request.pendingProfilePhoto}
+                  alt="Newly uploaded profile"
+                  referrerPolicy="no-referrer"
+                  className="h-24 w-24 rounded-lg object-cover ring-2 ring-amber-400"
+                />
+              </div>
+            ) : null}
+          </div>
           <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
             {[
               ["Email", request.email],

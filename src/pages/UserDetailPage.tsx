@@ -97,6 +97,13 @@ export function UserDetailPage() {
   };
 
   const user = data?.user;
+  const currentPhoto = typeof user?.profilePhoto === "string" && user.profilePhoto ? user.profilePhoto : null;
+  const pendingPhoto =
+    (typeof user?.pendingProfilePhoto === "string" && user.pendingProfilePhoto) ||
+    (typeof data?.registrationReview?.pendingProfilePhoto === "string" &&
+      data.registrationReview.pendingProfilePhoto) ||
+    null;
+  const headerPhoto = pendingPhoto || currentPhoto;
   const isReviewable =
     user?.status === "PENDING" ||
     user?.status === "PENDING_REVIEW" ||
@@ -256,10 +263,11 @@ export function UserDetailPage() {
       <div className="sticky top-0 z-20 -mx-1 border-b border-slate-200 bg-slate-50/95 px-1 py-3 backdrop-blur">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-4">
-            {user.profilePhoto ? (
+            {headerPhoto ? (
               <img
-                src={user.profilePhoto}
+                src={headerPhoto}
                 alt=""
+                referrerPolicy="no-referrer"
                 className="h-16 w-16 rounded-full object-cover ring-2 ring-white shadow"
               />
             ) : (
@@ -521,14 +529,33 @@ export function UserDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <DetailCard title="Basic Information">
-          <div className="mb-4 flex gap-4">
-            {user.profilePhoto ? (
-              <img src={user.profilePhoto} alt="Profile" className="h-24 w-24 rounded-lg object-cover" />
-            ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
-                No photo
+          <div className="mb-4 flex flex-wrap gap-4">
+            <div>
+              <p className="mb-1 text-xs font-medium text-slate-500">Current photo</p>
+              {currentPhoto ? (
+                <img
+                  src={currentPhoto}
+                  alt="Current profile"
+                  referrerPolicy="no-referrer"
+                  className="h-24 w-24 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+                  No photo
+                </div>
+              )}
+            </div>
+            {pendingPhoto ? (
+              <div>
+                <p className="mb-1 text-xs font-medium text-amber-700">New upload (waiting for approval)</p>
+                <img
+                  src={pendingPhoto}
+                  alt="Newly uploaded profile"
+                  referrerPolicy="no-referrer"
+                  className="h-24 w-24 rounded-lg object-cover ring-2 ring-amber-400"
+                />
               </div>
-            )}
+            ) : null}
             <div className="flex h-24 flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-400">
               Cover photo not stored
             </div>

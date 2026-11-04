@@ -55,6 +55,7 @@ export type UserListItem = {
   emailVerified?: boolean;
   loginSource?: "Google" | "Existing Login" | "Both";
   profilePhoto?: string | null;
+  pendingProfilePhoto?: string | null;
   subscriptionPlan?: string | null;
   subscriptionStatus?: string | null;
   communityRole?: string | null;

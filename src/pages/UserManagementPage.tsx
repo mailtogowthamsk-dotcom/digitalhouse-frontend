@@ -168,12 +168,13 @@ export function UserManagementPage() {
         key: "photo",
         label: "Photo",
         render: (r: UserListItem) =>
-          r.profilePhoto ? (
+          r.pendingProfilePhoto || r.profilePhoto ? (
             <img
-              src={r.profilePhoto}
+              src={r.pendingProfilePhoto || r.profilePhoto || ""}
               alt=""
+              title={r.pendingProfilePhoto ? "New photo waiting for approval" : "Profile photo"}
               referrerPolicy="no-referrer"
-              className="h-9 w-9 rounded-full object-cover"
+              className={`h-9 w-9 rounded-full object-cover${r.pendingProfilePhoto ? " ring-2 ring-amber-400" : ""}`}
             />
           ) : (
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600">

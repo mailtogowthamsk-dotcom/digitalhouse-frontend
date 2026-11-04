@@ -78,6 +78,8 @@ export type RegistrationDetail = {
     district: string | null;
     kulam: string | null;
     occupation: string | null;
+    profilePhoto: string | null;
+    pendingProfilePhoto: string | null;
     assignedBy: string | null;
   };
   events: Array<{
