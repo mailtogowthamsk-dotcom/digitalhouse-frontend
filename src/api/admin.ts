@@ -338,6 +338,16 @@ export type UpdateAdminUserPayload = {
   communityRole?: string | null;
   fatherName?: string | null;
   address?: string | null;
+  maritalStatus?: string | null;
+  workStudyDetails?: string | null;
+  currentLocation?: string | null;
+  nativeVillage?: string | null;
+  nativeTaluk?: string | null;
+  kulaDeivam?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  linkedin?: string | null;
+  hobbies?: string | null;
   profileVisibility?: "PUBLIC" | "PRIVATE";
   allowConnectionRequests?: boolean;
 };

@@ -111,6 +111,8 @@ export function UserDetailPage() {
 
   const startEdit = () => {
     if (!user) return;
+    const personal = (data?.profile?.personal ?? {}) as Record<string, string | null | undefined>;
+    const communityProfile = (data?.profile?.community ?? {}) as Record<string, string | null | undefined>;
     setEditForm({
       fullName: user.fullName ?? "",
       username: user.username ?? "",
@@ -120,6 +122,7 @@ export function UserDetailPage() {
       mobile: user.mobile ?? "",
       occupation: user.occupation ?? "",
       location: user.location ?? "",
+      currentLocation: personal.currentLocation ?? "",
       community: user.community ?? "",
       kulam: user.kulam ?? "",
       bloodGroup: user.bloodGroup ?? "",
@@ -130,10 +133,19 @@ export function UserDetailPage() {
       skills: user.skills ?? "",
       city: user.city ?? "",
       district: user.district ?? "",
+      nativeVillage: communityProfile.nativeVillage ?? "",
+      nativeTaluk: communityProfile.nativeTaluk ?? "",
+      kulaDeivam: communityProfile.kulaDeivam ?? "",
       communityRole: user.communityRole ?? "",
-      fatherName: String((data?.profile?.personal as { fatherName?: string | null } | null)?.fatherName ?? ""),
-      address: String((data?.profile?.personal as { address?: string | null } | null)?.address ?? ""),
-      profileVisibility: user.profileVisibility ?? "PUBLIC",
+      fatherName: personal.fatherName ?? "",
+      address: personal.address ?? "",
+      maritalStatus: personal.maritalStatus ?? "",
+      workStudyDetails: personal.workStudyDetails ?? "",
+      instagram: personal.instagram ?? "",
+      facebook: personal.facebook ?? "",
+      linkedin: personal.linkedin ?? "",
+      hobbies: personal.hobbies ?? "",
+      profileVisibility: user.profileVisibility === "PRIVATE" ? "PRIVATE" : "PUBLIC",
       allowConnectionRequests: user.allowConnectionRequests !== false
     });
     setEditing(true);
@@ -492,15 +504,25 @@ export function UserDetailPage() {
                 ["occupation", "Occupation"],
                 ["jobTitle", "Designation"],
                 ["company", "Company"],
+                ["workLocation", "Work location"],
                 ["education", "Education"],
                 ["bloodGroup", "Blood group"],
+                ["maritalStatus", "Marital status"],
                 ["community", "Community"],
                 ["kulam", "Kulam *"],
+                ["kulaDeivam", "Kula deivam"],
+                ["location", "Location"],
+                ["currentLocation", "Current location"],
                 ["city", "City"],
                 ["district", "District"],
-                ["location", "Location"],
+                ["nativeVillage", "Village / native place"],
+                ["nativeTaluk", "Native taluk"],
                 ["communityRole", "Community role"],
                 ["skills", "Skills"],
+                ["instagram", "Instagram"],
+                ["facebook", "Facebook"],
+                ["linkedin", "LinkedIn"],
+                ["hobbies", "Hobbies"],
                 ["fatherName", "Father's name"]
               ] as const
             ).map(([key, label]) => (
@@ -513,6 +535,40 @@ export function UserDetailPage() {
                 />
               </label>
             ))}
+            <label className="block text-sm sm:col-span-2 lg:col-span-3">
+              <span className="text-xs font-medium text-slate-500">Work / study details</span>
+              <textarea
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                rows={3}
+                maxLength={1000}
+                value={editForm.workStudyDetails ?? ""}
+                onChange={(e) => setEditForm((f) => ({ ...f, workStudyDetails: e.target.value }))}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-xs font-medium text-slate-500">Profile visibility</span>
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                value={editForm.profileVisibility ?? "PUBLIC"}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    profileVisibility: e.target.value === "PRIVATE" ? "PRIVATE" : "PUBLIC"
+                  }))
+                }
+              >
+                <option value="PUBLIC">Public</option>
+                <option value="PRIVATE">Private</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 self-end text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={editForm.allowConnectionRequests !== false}
+                onChange={(e) => setEditForm((f) => ({ ...f, allowConnectionRequests: e.target.checked }))}
+              />
+              Allow connection requests
+            </label>
             <label className="block text-sm sm:col-span-2 lg:col-span-3">
               <span className="text-xs font-medium text-slate-500">Address</span>
               <textarea
