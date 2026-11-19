@@ -22,6 +22,7 @@ import { MatrimonySubscriptionDetailPage } from "./features/matrimony-subscripti
 import { BusinessApprovalPage } from "./pages/BusinessApprovalPage";
 import { BusinessBenefitsApprovalPage } from "./pages/BusinessBenefitsApprovalPage";
 import { PostsModerationPage } from "./pages/PostsModerationPage";
+import { StoriesManagementPage } from "./pages/StoriesManagementPage";
 import { JobPortalPage } from "./pages/JobPortalPage";
 import { JobDetailPage } from "./pages/JobDetailPage";
 import { JobApplicationsPage } from "./pages/JobApplicationsPage";
@@ -104,6 +105,7 @@ export default function App() {
                 <Route path="business" element={<M module="business"><BusinessApprovalPage /></M>} />
                 <Route path="business-benefits" element={<M module="business"><BusinessBenefitsApprovalPage /></M>} />
                 <Route path="posts" element={<M module="posts"><PostsModerationPage /></M>} />
+                <Route path="stories" element={<M module="stories"><StoriesManagementPage /></M>} />
                 <Route
                   path="job-portal/applications"
                   element={<M module="jobs"><JobApplicationsPage /></M>}

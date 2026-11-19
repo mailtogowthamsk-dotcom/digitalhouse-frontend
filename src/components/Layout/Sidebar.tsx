@@ -19,6 +19,7 @@ const navItems: Array<{ to: string; label: string; icon: string; module: string 
   { to: "/business", label: "Business Approval", icon: "🏢", module: "business" },
   { to: "/business-benefits", label: "Member Benefits", icon: "🎁", module: "business" },
   { to: "/posts", label: "Posts Moderation", icon: "📝", module: "posts" },
+  { to: "/stories", label: "Stories Management", icon: "⭕", module: "stories" },
   { to: "/job-portal", label: "Job Portal", icon: "💼", module: "jobs" },
   { to: "/marketplace", label: "Marketplace", icon: "🛒", module: "marketplace" },
   { to: "/helping-hand", label: "Helping Hand", icon: "🤝", module: "helping_hands" },

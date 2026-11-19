@@ -800,7 +800,7 @@ export function ProminentPeoplePage() {
                     onChange={(e) => patchForm("isPublished", e.target.checked)}
                     className="rounded border-slate-300"
                   />
-                  Published
+                  Published · First publication notifies community members
                 </label>
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input
@@ -1085,7 +1085,7 @@ export function ProminentPeoplePage() {
           confirm?.type === "delete"
             ? `Permanently delete “${confirm.item.fullName}”? This cannot be undone.`
             : confirm?.type === "publish"
-              ? `Publish “${confirm.item.fullName}” so they appear in the app?`
+              ? `Publish “${confirm.item.fullName}” so they appear in the app? First publication also notifies community members.`
               : confirm?.type === "unpublish"
                 ? `Unpublish “${confirm.item.fullName}”? They will be hidden from the app.`
                 : confirm?.type === "feature"
